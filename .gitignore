@@ -1,0 +1,7 @@
+# 忽略模型权重
+roberta_cbt_scorer_best/
+*.safetensors
+*.bin
+
+# 忽略 IDE 配置文件（就是之前报警告的那些）
+.idea/
