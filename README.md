@@ -16,3 +16,4 @@ uvicorn app.main:app --reload
 （这样可以不涉及前后端分开通信的问题）
 
 在你自己的前端目录运行前端启动命令
+<img width="1102" height="452" alt="image" src="https://github.com/user-attachments/assets/1a62af2c-9dfa-43a3-8d48-c10ef90d8bc7" />
