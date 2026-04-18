@@ -3,53 +3,50 @@ from supabase import create_client
 from langchain_openai import OpenAIEmbeddings
 
 # ==========================================
-# 1. 配置你的环境密钥
+# 1. 配置环境密钥
 # ==========================================
-SUPABASE_URL = "你的_Supabase_URL"
-SUPABASE_KEY = "你的_Supabase_Key"
-OPENAI_API_KEY = "你的_OpenAI_或_DeepSeek_API_Key"
+SUPABASE_URL = "https://xzflljgbplwshdzhudly.supabase.co"
+SUPABASE_KEY = "sb_secret_hzG4sRO5IwSv6qJKNGfrkg_JweQtjsg "
+SILICONFLOW_API_KEY = "sk-gcddcehjauehmtzpslnzjpmiggymcuaxsnvvwufzwxiflyck"  # 换成硅基流动的 API 密钥
 
-# 初始化客户端
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 embeddings = OpenAIEmbeddings(
-    model="text-embedding-3-small",
-    api_key=OPENAI_API_KEY
+    model="BAAI/bge-m3",
+    openai_api_key=SILICONFLOW_API_KEY,
+    openai_api_base="https://api.siliconflow.cn/v1"
 )
 
 # ==========================================
-# 2. 读取理论库 JSON (这里以理论库为例)
+# 2. 读取对话库 JSON 【修改点 1：更改文件名】
 # ==========================================
-print("正在读取 JSON 数据...")
-with open('cbt_theory.json', 'r', encoding='utf-8') as f:
-    theory_data = json.load(f)
+print("正在读取对话数据...")
+with open('cbt_dialogue.json', 'r', encoding='utf-8') as f:
+    dialogue_data = json.load(f)
 
 # ==========================================
 # 3. 遍历、向量化并注入 Supabase
 # ==========================================
-print(f"共发现 {len(theory_data)} 条数据，开始生成向量并注入...")
+print(f"共发现 {len(dialogue_data)} 条对话数据，开始生成 1024 维向量并注入...")
 
-for item in theory_data:
-    # 核心逻辑：只提取 trigger_context 作为“检索靶子”
-    # 如果你处理的是对话库，这里就改成 item.get("trigger_dialogue", "")
-    content_to_embed = item.get("trigger_context", "")
+for item in dialogue_data:
+    # 【修改点 2：将向量化目标改为 trigger_dialogue】
+    # 将患者的表述作为靶子，最利于 RAG 系统的相似度匹配
+    content_to_embed = item.get("trigger_dialogue", "")
 
     if not content_to_embed:
         continue
 
     print(f"正在向量化: {content_to_embed[:20]}...")
 
-    # 调用大模型，把文字变成 1536 维的数字数组
     vector = embeddings.embed_query(content_to_embed)
 
-    # 组装最终要写入数据库的“万能格式”
     db_record = {
-        "type": "theory",  # 打上标签，证明这是理论数据
-        "content": content_to_embed,  # 纯文本靶子
-        "metadata": item,  # 【关键】把一整段原汁原味的 JSON 挂载在这里！
-        "embedding": vector  # 向量数组
+        "type": "dialogue",  # 【修改点 3：数据标签改为 dialogue，方便后续在数据库中进行混合检索时的条件过滤】
+        "content": content_to_embed,
+        "metadata": item, # 完整的包含 distress_type, strategy, template 的 JSON 结构会原封不动存入
+        "embedding": vector
     }
 
-    # 写入 Supabase
     supabase.table("cbt_knowledge").insert(db_record).execute()
 
-print("🎉 全部知识库数据注入完成！赶紧去 Supabase 后台看看吧！")
+print("🎉 对话库数据注入完成！")
