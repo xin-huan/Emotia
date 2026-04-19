@@ -14,6 +14,7 @@ from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 #导入 Supabase 客户端
 from supabase import create_client, Client
+from langchain_openai import OpenAIEmbeddings
 
 # ==========================================
 # 0. 全局加载 ML 模型与 Supabase 数据库
@@ -21,6 +22,7 @@ from supabase import create_client, Client
 # --- 填入你刚才保存的 URL 和 KEY ---
 SUPABASE_URL = "https://xzflljgbplwshdzhudly.supabase.co"
 SUPABASE_KEY = "sb_secret_hzG4sRO5IwSv6qJKNGfrkg_JweQtjsg "
+SILICONFLOW_API_KEY = "sk-gcddcehjauehmtzpslnzjpmiggymcuaxsnvvwufzwxiflyck"
 
 print("⏳ 正在连接 Supabase 数据库...")
 try:
@@ -29,6 +31,18 @@ try:
 except Exception as e:
     print(f"⚠️ Supabase 连接失败: {e}")
     supabase = None
+
+print("⏳ 正在加载 BAAI/bge-m3 向量化模型...")
+try:
+    embeddings = OpenAIEmbeddings(
+        model="BAAI/bge-m3",
+        openai_api_key=SILICONFLOW_API_KEY,
+        openai_api_base="https://api.siliconflow.cn/v1"
+    )
+    print("✅ 向量化模型加载成功！")
+except Exception as e:
+    print(f"⚠️ 向量化模型加载失败: {e}")
+    embeddings = None
 
 MODEL_DIR = "./roberta_cbt_scorer_best"
 TARGET_COLS = ["焦虑", "悲伤", "生气", "羞愧", "无助", "平静", "轻松"]
@@ -57,6 +71,68 @@ def predict_emotions(text: str) -> dict:
     scores = (outputs.logits.squeeze().cpu().numpy() * 100.0).clip(0, 100)
     return {col: float(score) for col, score in zip(TARGET_COLS, scores)}
 
+
+def retrieve_cbt_knowledge(query_text: str, kb_type: str = "dialogue", match_count: int = 2) -> str:
+    """
+    将用户的发言转为向量，并去 Supabase 中检索最匹配的 CBT 策略或系统认知规范。
+    通过 kb_type ('dialogue' 或 'theory') 动态区分 metadata 的解析逻辑。
+    """
+    # 确保全局的向量模型和数据库连接正常
+    if not embeddings or not supabase:
+        print("⚠️ 警告: embeddings 或 supabase 未初始化，无法执行检索。")
+        return ""
+
+    try:
+        # 1. 将用户的输入实时向量化 (转化为 bge-m3 的 1024 维数组)
+        query_vector = embeddings.embed_query(query_text)
+
+        # 2. 调用 Supabase 的 RPC 函数进行向量匹配检索
+        response = supabase.rpc(
+            'match_cbt_knowledge',
+            {
+                'query_embedding': query_vector,
+                'match_threshold': 0.4,  # 余弦相似度阈值，0.4 较为宽松，可随测试调整
+                'match_count': match_count,
+                'filter_type': kb_type  # 传入 'dialogue' 或 'theory' 进行精准过滤
+            }
+        ).execute()
+
+        results = response.data
+        if not results:
+            return ""
+
+        # 3. 根据检索库类型，动态解析 metadata 并拼接上下文
+        rag_context = "\n【内部参考：相关心理干预规范与话术模板】\n"
+
+        for i, row in enumerate(results):
+            meta = row.get("metadata", {})
+
+            if kb_type == "dialogue":
+                # 解析对话库 (Dialogue) 专属字段
+                strategy = meta.get("counselor_strategy", "无策略信息")
+                template = meta.get("gold_response_template", "无话术信息")
+                distress = meta.get("user_distress_type", "未知困扰")
+
+                rag_context += f"💡 [历史相似案例 {i + 1} - {distress}]\n"
+                rag_context += f"  - 核心策略: {strategy}\n"
+                rag_context += f"  - 话术参考: {template}\n\n"
+
+            elif kb_type == "theory":
+                # 解析理论库 (Theory) 专属字段
+                principle = meta.get("design_principle", "无原则信息")
+                strategy = meta.get("implementation_strategy", "无实施策略")
+                example = meta.get("response_example", "无参考话术")
+
+                rag_context += f"🧠 [系统认知规范 {i + 1}]\n"
+                rag_context += f"  - 设计原则: {principle}\n"
+                rag_context += f"  - 实施策略: {strategy}\n"
+                rag_context += f"  - 系统回应参考: {example}\n\n"
+
+        return rag_context
+
+    except Exception as e:
+        print(f"⚠️ RAG 检索出错: {e}")
+        return ""
 
 # ==========================================
 # 1. 定义状态字典 (CBT State) - 我们的“内存数据库”
@@ -133,8 +209,20 @@ def get_safe_history(messages, k=6):
 def node_extract_event(state: CBTState):
     print("\n[Node 1] 正在处理: 提取事件...")
     llm_with_tools = llm.bind_tools([submit_event_summary])
+
+    user_initial_input = state["messages"][-1].content if state["messages"] else ""
+    rag_theory_text = ""
+    if user_initial_input:
+        print(f"  🔍 [RAG 检索] 正在检索底层系统规范与危机防御策略...")
+        # 注意：这里我们强制检索 theory 库，确保边界安全
+        rag_theory_text = retrieve_cbt_knowledge(query_text=user_initial_input, kb_type="theory")
+        if rag_theory_text:
+            print(f"  🧠 [RAG 命中] 触发系统规则/危机预警，已注入底线思维！")
+
     sys_msg = SystemMessage(
-        content="你是专业的CBT治疗师。当前处于【阶段1：提取核心客观事件】。你的唯一任务是获取触发用户负面情绪的“核心客观事实（即发生了什么）”。【严格遵守以下规则】：1. 核心锚点原则：只要用户已经说出了核心冲突或挫折，就说明事实已经足够完善！2. 严禁过度追问：绝对不要像警察一样追问边缘细节。3. 立即触发机制：判断核心事件已出现，立即且仅调用 `submit_event_summary` 工具概括事件（不超过50个纯客观字），绝不回复其他追问！")
+        content=f"你是专业的CBT治疗师。当前处于【阶段1：提取核心客观事件】。{rag_theory_text}你的唯一任务是获取触发用户负面情绪的“核心客观事实（即发生了什么）”。【严格遵守以下规则】：1. 核心锚点原则：只要用户已经说出了核心冲突或挫折，就说明事实已经足够完善！2. 严禁过度追问：绝对不要像警察一样追问边缘细节。3. 立即触发机制：判断核心事件已出现，立即且仅调用 `submit_event_summary` 工具概括事件（不超过50个纯客观字），绝不回复其他追问！"
+    )
+
     response = llm_with_tools.invoke([sys_msg] + state["messages"][-3:])
     return {"messages": [response]}
 
@@ -161,11 +249,24 @@ def node_analyze_reaction(state: CBTState):
 
 def node_gather_evidence(state: CBTState):
     print("\n[Node 3] 正在处理: 搜集证据...")
+
+    last_msg = state["messages"][-1]
+    user_last_reply = last_msg.content if last_msg.type == "human" else ""
+    rag_dialogue_text = ""
+
+    if user_last_reply:
+        print(f"  🔍 [RAG 检索] 正在获取针对性的话术探测方向...")
+        # 检索 dialogue 库，寻找类似困境的提问策略
+        rag_dialogue_text = retrieve_cbt_knowledge(query_text=user_last_reply, kb_type="dialogue")
+        if rag_dialogue_text:
+            print(f"  💡 [RAG 命中] 已获取金牌咨询师的探测方向！")
+
     llm_with_tools = llm.bind_tools([submit_evidence, finish_stage_3])
     current_evidences = [ev["text"] for ev in state.get("evidences", [])]
     valid_tags = list(state.get('emotion_tags', {}).keys())
     sys_msg = SystemMessage(
-        content=f"你是一位温暖、包容的CBT治疗师。当前处于【阶段3：搜集客观证据】。【永久记忆：核心背景】客观事件：{state['event_summary']} 用户最初的完整倾诉：{state.get('stage1_raw_texts', '')} 确诊负面情绪：{valid_tags} 目前已提取的证据：{current_evidences}。【你的沟通艺术与后台工作流】：1. 温暖对话：共情托底，像剥洋葱一样温柔提问，每次只问一个小问题。2. 提取保存：提取真实发生的“客观动作或细节”，默默调用 `submit_evidence` 保存。合并相似行为。3. 阶段确认：觉得挖掘差不多时，向用户复述已提取证据，询问是否还有补充。4. 结束阶段：只有当用户明确回答“没有补充了”时，才能调用 `finish_stage_3`。")
+        content=f"你是一位温暖、包容的CBT治疗师。当前处于【阶段3：搜集客观证据】。【永久记忆：核心背景】客观事件：{state['event_summary']} 用户最初的完整倾诉：{state.get('stage1_raw_texts', '')} 确诊负面情绪：{valid_tags} 目前已提取的证据：{current_evidences}。{rag_dialogue_text}【你的沟通艺术与后台工作流】：1. 温暖对话：共情托底，像剥洋葱一样温柔提问，每次只问一个小问题。2. 提取保存：提取真实发生的“客观动作或细节”，默默调用 `submit_evidence` 保存。合并相似行为。3. 阶段确认：觉得挖掘差不多时，向用户复述已提取证据，询问是否还有补充。4. 结束阶段：只有当用户明确回答“没有补充了”时，才能调用 `finish_stage_3`。"
+    )
     context = get_safe_history(state["messages"], k=4)
     response = llm_with_tools.invoke([sys_msg] + context)
     return {"messages": [response]}
@@ -174,14 +275,24 @@ def node_gather_evidence(state: CBTState):
 def node_cognitive_reframing(state: CBTState):
     print("\n[Node 4] 正在处理: 认知重构...")
     last_msg = state["messages"][-1]
+    user_last_reply = ""
     if last_msg.type == "human":
         live_scores = predict_emotions(last_msg.content)
         print(f"\n🧠 [阶段四 实时 ML 监测] 当前用户回复的七维得分:")
         for k, v in live_scores.items(): print(f"  - {k:<4}: {v:>5.1f} 分")
+
+    rag_support_text = ""
+    if user_last_reply:
+        print(f"  🔍 [RAG 检索] 正在去 Supabase 匹配应对策略...")
+        rag_support_text = retrieve_cbt_knowledge(query_text=user_last_reply, kb_type="dialogue")
+        if rag_support_text:
+            print(f"  💡 [RAG 命中] 成功获取类似案例金牌策略，正在为 LLM 注入外部大脑！")
+
     llm_with_tools = llm.bind_tools([evaluate_reframing])
     evidences_str = json.dumps(state.get('evidences', []), ensure_ascii=False)
     sys_msg = SystemMessage(
-        content=f"你是一位温暖极具洞察力的CBT治疗师。进入认知重构阶段。【你的内部参考信息】：客观事件：{state.get('event_summary', '')} 心结证据：{evidences_str}。【你的沟通艺术】：1. 隐形引导，自然交流。2. 温柔聚焦一个 'active' 的证据。3. 启发思考寻找新视角。4. 若有认知松动，立即调用 `evaluate_reframing` 工具（传入 evidence 和 current_tag）。5. 扭转后找下一个 active 证据。6. 兜底安抚：收到拦截指令说明防御强，先共情难受接纳感受。")
+        content=f"你是一位温暖极具洞察力的CBT治疗师。进入认知重构阶段。【你的内部参考信息】：客观事件：{state.get('event_summary', '')} 心结证据：{evidences_str}。{rag_support_text}【你的沟通艺术】：1. 隐形引导，自然交流。2. 温柔聚焦一个 'active' 的证据。3. 启发思考寻找新视角。4. 若有认知松动，立即调用 `evaluate_reframing` 工具（传入 evidence 和 current_tag）。5. 扭转后找下一个 active 证据。6. 兜底安抚：收到拦截指令说明防御强，先共情难受接纳感受。"
+    )
     context = get_safe_history(state["messages"], k=5)
     response = llm_with_tools.invoke([sys_msg] + context)
     return {"messages": [response]}

@@ -1,5 +1,5 @@
 # 忽略模型权重
-roberta_cbt_scorer_best/
+backend/agent/roberta_cbt_scorer_best/
 *.safetensors
 *.bin
 

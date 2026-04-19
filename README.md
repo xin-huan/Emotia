@@ -53,3 +53,5 @@ uvicorn app.main:app --reload
 ###一些接口格式注意
 不管你用什么日历插件，请在提交时把日期格式化为 2005-02-01 这种样子的字符串传给后端。
 
+# agent
+roberta_cbt_scorer_best文件夹要保持位于agent.py同一目录下。
