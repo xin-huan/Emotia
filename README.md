@@ -1,5 +1,8 @@
 # web
-
+置顶一下方便我修改前端（海鲜独断专行ing）
+```python
+npm run dev
+```
 ### 第一步：拉取代码
 建立一个新的文件夹
 ```python
@@ -63,5 +66,7 @@ roberta_cbt_scorer_best文件夹要保持位于agent.py同一目录下。
 ```python
 npm run dev
 ```
-主要修改在src/app.jsx
-其余为特效or素材
+4.21 环境补充：
+```python
+npm install react-router-dom
+```
