@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 
 const GooeyNav = ({
   items,
@@ -8,19 +8,33 @@ const GooeyNav = ({
   particleR = 100,
   timeVariance = 300,
   colors = [1, 2, 3, 1, 2, 3, 1, 4],
-  initialActiveIndex = 0
+  activePath,
+  onItemClick
 }) => {
   const containerRef = useRef(null);
   const navRef = useRef(null);
   const filterRef = useRef(null);
   const textRef = useRef(null);
-  const [activeIndex, setActiveIndex] = useState(initialActiveIndex);
+
+  const [activeIndex, setActiveIndex] = useState(() => {
+    const initialIndex = items.findIndex(item => item.href === activePath);
+    return initialIndex !== -1 ? initialIndex : 0;
+  });
+
+  useEffect(() => {
+    const newIndex = items.findIndex(item => item.href === activePath);
+    if (newIndex !== -1 && newIndex !== activeIndex) {
+      setActiveIndex(newIndex);
+    }
+  }, [activePath, items]);
 
   const noise = (n = 1) => n / 2 - Math.random() * n;
+
   const getXY = (distance, pointIndex, totalPoints) => {
     const angle = ((360 + noise(8)) / totalPoints) * pointIndex * (Math.PI / 180);
     return [distance * Math.cos(angle), distance * Math.sin(angle)];
   };
+
   const createParticle = (i, t, d, r) => {
     let rotate = noise(r / 10);
     return {
@@ -32,6 +46,7 @@ const GooeyNav = ({
       rotate: rotate > 0 ? (rotate + r / 20) * 10 : (rotate - r / 20) * 10
     };
   };
+
   const makeParticles = element => {
     const d = particleDistances;
     const r = particleR;
@@ -69,8 +84,9 @@ const GooeyNav = ({
       }, 30);
     }
   };
+
   const updateEffectPosition = element => {
-    if (!containerRef.current || !filterRef.current || !textRef.current) return;
+    if (!containerRef.current || !filterRef.current || !textRef.current || !element) return;
     const containerRect = containerRef.current.getBoundingClientRect();
     const pos = element.getBoundingClientRect();
     const styles = {
@@ -83,11 +99,19 @@ const GooeyNav = ({
     Object.assign(textRef.current.style, styles);
     textRef.current.innerText = element.innerText;
   };
-  const handleClick = (e, index) => {
-    const liEl = e.currentTarget;
+
+  const handleClick = (e, index, item) => {
+    e.preventDefault();
+    if (onItemClick) {
+      onItemClick(item);
+    }
+
+    const liEl = e.currentTarget.closest('li');
+
     if (activeIndex === index) return;
     setActiveIndex(index);
     updateEffectPosition(liEl);
+
     if (filterRef.current) {
       const particles = filterRef.current.querySelectorAll('.particle');
       particles.forEach(p => filterRef.current.removeChild(p));
@@ -101,15 +125,14 @@ const GooeyNav = ({
       makeParticles(filterRef.current);
     }
   };
-  const handleKeyDown = (e, index) => {
+
+  const handleKeyDown = (e, index, item) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      const liEl = e.currentTarget.parentElement;
-      if (liEl) {
-        handleClick({ currentTarget: liEl }, index);
-      }
+      handleClick(e, index, item);
     }
   };
+
   useEffect(() => {
     if (!navRef.current || !containerRef.current) return;
     const activeLi = navRef.current.querySelectorAll('li')[activeIndex];
@@ -129,12 +152,20 @@ const GooeyNav = ({
 
   return (
     <>
-      {/* 隐藏的纯净版 SVG Gooey 滤镜，完美解决任何背景色渗透和黑底问题 */}
-      <svg style={{ position: 'absolute', width: 0, height: 0, pointerEvents: 'none' }}>
+      {/* 核心修正 1：引入 SVG 滤镜，完美计算透明背景下的粘滞效果 */}
+      <svg width="0" height="0" className="absolute hidden">
         <defs>
-          <filter id="goo">
+          <filter id="goo" x="-200%" y="-200%" width="500%" height="500%">
             <feGaussianBlur in="SourceGraphic" stdDeviation="7" result="blur" />
-            <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -9" result="goo" />
+            <feColorMatrix
+              in="blur"
+              mode="matrix"
+              values="1 0 0 0 0
+                      0 1 0 0 0
+                      0 0 1 0 0
+                      0 0 0 20 -9"
+              result="goo"
+            />
           </filter>
         </defs>
       </svg>
@@ -159,10 +190,14 @@ const GooeyNav = ({
           .effect.text.active {
             color: black;
           }
-          /* 使用 SVG 滤镜，丢弃有黑底隐患的 mix-blend-mode */
+
+          /* 核心修正 2：使用 SVG 滤镜替代了原先带有黑块的 CSS Hack */
           .effect.filter {
-            filter: url(#goo);
+            filter: url('#goo');
           }
+
+          /* 核心修正 3：彻底删除了原先包裹并产生黑底阴影的 .effect.filter::before */
+
           .effect.filter::after {
             content: "";
             position: absolute;
@@ -288,9 +323,9 @@ const GooeyNav = ({
                 }`}
               >
                 <a
-                  onClick={e => handleClick(e, index)}
+                  onClick={e => handleClick(e, index, item)}
                   href={item.href}
-                  onKeyDown={e => handleKeyDown(e, index)}
+                  onKeyDown={e => handleKeyDown(e, index, item)}
                   className="outline-none py-[0.6em] px-[1em] inline-block"
                 >
                   {item.label}

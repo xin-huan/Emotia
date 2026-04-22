@@ -3,7 +3,7 @@
 @theme {
   /* 定义你的专属 Wysa 颜色 */
   --color-wysa-green: #567357;
-  --color-wysa-pink:  #F9FOED;
+  --color-wysa-pink:  #F9F0ED;
   --color-wysa-coral: #E58889;
 
   /* 兼容你代码中可能存在的其他变量 */
