@@ -1,9 +1,9 @@
-# backend/app/main.py
-from typing import Optional
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from datetime import date # 导入日期模块
+from typing import List, Dict, Any, Optional
+from datetime import date
+import os
 
 # 导入你的包装器和数据库
 from agent.core import process_cbt_chat
@@ -20,128 +20,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 定义前端入参格式
+# ======= 数据模型定义 =======
+
 class ChatRequest(BaseModel):
     session_id: str
     user_id: str
     message: str
 
-@app.get("/")
-def index():
-    return {"status": "online"}
-
-@app.post("/api/chat")
-async def chat_endpoint(req: ChatRequest):
-    # 1. 存入用户消息到数据库 (Supabase)
-    user_msg_data = {
-        "session_id": req.session_id,
-        "sender": "user",
-        "content": req.message
-    }
-    supabase.table("chat_messages").insert(user_msg_data).execute()
-
-    # 2. 调用 Agent 核心逻辑
-    agent_res = process_cbt_chat(req.session_id,req.user_id, req.message)
-
-
-    # 4. 返回给前端
-    return agent_res
-
-# backend/app/main.py (新增部分)
-
-# 1. 定义用户认证的数据模型
 class UserAuthRequest(BaseModel):
     email: str
     password: str
 
-# 2. 注册接口
-@app.post("/api/signup")
-def signup(req: UserAuthRequest):
-    try:
-        # 调用 Supabase 内置的注册函数
-        response = supabase.auth.sign_up({
-            "email": req.email,
-            "password": req.password,
-        })
-        
-        # 这里的 response.user 里包含了唯一的 user_id (UUID)
-        return {
-            "status": "success", 
-            "message": "注册成功！", 
-            "user_id": response.user.id 
-        }
-    except Exception as e:
-        return {"status": "error", "message": f"注册失败: {str(e)}"}
-
-# 3. 登录接口
-@app.post("/api/login")
-def login(req: UserAuthRequest):
-    try:
-        # 调用 Supabase 内置的登录函数
-        response = supabase.auth.sign_in_with_password({
-            "email": req.email,
-            "password": req.password,
-        })
-        
-        # 登录成功后，返回用户信息和 access_token
-        return {
-            "status": "success",
-            "message": "登录成功！",
-            "data": {
-                "user_id": response.user.id,
-                "email": response.user.email,
-                "access_token": response.session.access_token # 前端可以用这个存入本地缓存
-            }
-        }
-    except Exception as e:
-        # 如果账号不存在或密码错误，会跳到这里
-        return {"status": "error", "message": "邮箱或密码错误，请检查后再试。"}
-    
-
-
-# 1. 定义资料更新的模型
 class ProfileUpdate(BaseModel):
     user_id: str
     username: Optional[str] = None
     avatar_url: Optional[str] = None
     birthday: Optional[str] = None # 格式 "YYYY-MM-DD"
-
-# 2. 接口：获取个人资料
-@app.get("/api/user/profile/{user_id}")
-def get_profile(user_id: str):
-    res = supabase.table("profiles").select("*").eq("id", user_id).single().execute()
-    return res.data
-
-# 推荐：第二版的校验逻辑 + 第一版的更新策略
-@app.put("/api/user/profile")
-def update_profile(req: ProfileUpdate):
-    # 1. 自动过滤掉未传入的字段 (来自第二版，更可靠)
-    update_data = req.dict(exclude_unset=True)
-    
-    # 2. 格式校验 (来自第二版，更安全)
-    if "birthday" in update_data and update_data["birthday"]:
-        try:
-            date.fromisoformat(update_data["birthday"])
-        except ValueError:
-            return {"status": "error", "message": "生日格式不正确，请使用 YYYY-MM-DD 格式"}
-    
-    # 3. 执行更新 (来自第一版，更符合语义)
-    # 确保 user_id 存在且正确
-    if not req.user_id:
-        return {"status": "error", "message": "缺少用户ID"}
-        
-    res = supabase.table("profiles") \
-        .update(update_data) \
-        .eq("id", req.user_id) \
-        .execute()
-    
-    # 可选：检查是否更新成功（如果记录不存在，res.data 可能为空）
-    if not res.data:
-        return {"status": "error", "message": "用户资料不存在"}
-    
-    return {"status": "success", "message": "资料已更新", "data": res.data}
-
-#问答界面模型定义
 
 class PostCreate(BaseModel):
     user_id: str
@@ -153,55 +47,187 @@ class AnswerCreate(BaseModel):
     post_id: str
     user_id: str
     content: str
-#问答界面接口
-# 修改后的获取帖子列表接口
 
-# A. 获取所有分类 (前端画顶部 Tab 或侧边栏用)
+class TestSubmitRequest(BaseModel):
+    user_id: str
+    test_id: str
+    answers: List[dict] # 每一题的选择，例如 [{"question_id": "xxx", "score": 2}, ...]
+
+# ======= 核心业务接口 =======
+
+@app.get("/")
+def index():
+    return {"status": "online"}
+
+# 1. 聊天接口
+@app.post("/api/chat")
+async def chat_endpoint(req: ChatRequest):
+    # A. 存入用户消息到数据库
+    user_msg_data = {
+        "session_id": req.session_id,
+        "sender": "user",
+        "content": req.message
+    }
+    supabase.table("chat_messages").insert(user_msg_data).execute()
+
+    # B. 调用 Agent 核心逻辑
+    agent_res = process_cbt_chat(req.session_id, req.user_id, req.message)
+
+    # C. 存入 Agent 回复到数据库
+    agent_msg_data = {
+        "session_id": req.session_id,
+        "sender": "agent",
+        "content": agent_res["reply"],
+        "cbt_stage": agent_res["cbt_stage"]
+    }
+    supabase.table("chat_messages").insert(agent_msg_data).execute()
+
+    return agent_res
+
+# 2. 注册接口 (增强版)
+@app.post("/api/signup")
+def signup(req: UserAuthRequest):
+    try:
+        response = supabase.auth.sign_up({
+            "email": req.email,
+            "password": req.password,
+        })
+        if response.user is None:
+            return {"status": "error", "message": "注册失败：该邮箱可能已被注册"}
+        return {"status": "success", "data": {"user_id": response.user.id}}
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"注册失败: {str(e)}")
+
+# 3. 登录接口 (增强版)
+@app.post("/api/login")
+def login(req: UserAuthRequest):
+    try:
+        response = supabase.auth.sign_in_with_password({
+            "email": req.email,
+            "password": req.password,
+        })
+        return {
+            "status": "success",
+            "message": "登录成功！",
+            "data": {
+                "user_id": response.user.id,
+                "email": response.user.email,
+                "access_token": response.session.access_token 
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="邮箱或密码错误，请检查后再试。")
+
+# 4. 个人资料接口
+@app.get("/api/user/profile/{user_id}")
+def get_profile(user_id: str):
+    res = supabase.table("profiles").select("*").eq("id", user_id).single().execute()
+    return res.data
+
+@app.put("/api/user/profile")
+def update_profile(req: ProfileUpdate):
+    update_data = req.dict(exclude_unset=True)
+    if "birthday" in update_data and update_data["birthday"]:
+        try:
+            date.fromisoformat(update_data["birthday"])
+        except ValueError:
+            return {"status": "error", "message": "生日格式不正确，请使用 YYYY-MM-DD 格式"}
+    
+    if not req.user_id:
+        return {"status": "error", "message": "缺少用户ID"}
+        
+    db_data = update_data.copy()
+    db_data["id"] = db_data.pop("user_id")
+    res = supabase.table("profiles").upsert(db_data).execute()
+    return {"status": "success", "data": res.data}
+
+# ======= 博客问答页 API =======
+
 @app.get("/api/forum/categories")
 def get_categories():
     res = supabase.table("forum_categories").select("*").execute()
     return res.data
 
-# B. 获取帖子列表 (支持按分类筛选)
 @app.get("/api/forum/posts")
 def get_posts(category_id: int = None):
-    # 注意这里的 select：它会顺着 user_id 自动去 profiles 表里抓 username 和 avatar_url
     query = supabase.table("forum_posts").select("*, profiles(username, avatar_url), forum_categories(name)")
-    
     if category_id:
         query = query.eq("category_id", category_id)
-        
     res = query.order("created_at", desc=True).execute()
     return res.data
 
-# C. 发布新帖子 (提问)
 @app.post("/api/forum/posts")
 def create_post(post: PostCreate):
-    data = post.dict()
-    res = supabase.table("forum_posts").insert(data).execute()
-    return {"status": "success", "data": res.data}
+    try:
+        data = post.dict()
+        res = supabase.table("forum_posts").insert(data).execute()
+        return {"status": "success", "data": res.data}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-# D. 获取帖子详情及其所有回答
 @app.get("/api/forum/posts/{post_id}")
 def get_post_detail(post_id: str):
-    # 查帖子内容
-    post_res = supabase.table("forum_posts").select("*, profiles(username)").eq("id", post_id).single().execute()
-    # 查关联的所有回答
-    answers_res = supabase.table("forum_answers").select("*, profiles(username)").eq("post_id", post_id).order("created_at").execute()
-    return {
-        "post": post_res.data,
-        "answers": answers_res.data
-    }
+    # 强行去掉可能存在的引号
+    p_id = post_id.strip('"').strip("'")
+    post_res = supabase.table("forum_posts").select("*, profiles(username, avatar_url), forum_categories(name)").eq("id", p_id).single().execute()
+    answers_res = supabase.table("forum_answers").select("*, profiles(username, avatar_url)").eq("post_id", p_id).order("created_at", desc=False).execute()
+    return {"post": post_res.data, "answers": answers_res.data}
 
-# E. 提交回答
 @app.post("/api/forum/answers")
 def create_answer(ans: AnswerCreate):
-    data = ans.dict()
-    res = supabase.table("forum_answers").insert(data).execute()
-    return {"status": "success", "data": res.data}
+    try:
+        data = ans.dict()
+        res = supabase.table("forum_answers").insert(data).execute()
+        return {"status": "success", "data": res.data}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-# F. 获取“我的帖子”（个人中心用）
 @app.get("/api/user/my-posts/{user_id}")
 def get_my_posts(user_id: str):
     res = supabase.table("forum_posts").select("*").eq("user_id", user_id).execute()
     return res.data
+
+# ======= 心理测评模块 API =======
+
+@app.get("/api/tests")
+def get_all_tests():
+    res = supabase.table("tests").select("*").execute()
+    return res.data
+
+@app.get("/api/tests/{test_id}/questions")
+def get_test_questions(test_id: str):
+    res = supabase.table("test_questions").select("*").eq("test_id", test_id).order("sort_order").execute()
+    return res.data
+
+@app.post("/api/tests/submit")
+def submit_test(req: TestSubmitRequest):
+    total_score = sum([ans["score"] for ans in req.answers])
+    if total_score <= 4: level = "暂无明显焦虑"
+    elif total_score <= 9: level = "轻度焦虑"
+    elif total_score <= 14: level = "中度焦虑"
+    else: level = "重度焦虑"
+
+    radar_data = [
+        {"name": "紧张不安", "value": total_score // 4 + 1},
+        {"name": "无法控制担忧", "value": total_score // 5 + 2},
+        {"name": "过度担心", "value": total_score // 6 + 1},
+        {"name": "很难放松", "value": 3},
+        {"name": "容易烦躁", "value": 2}
+    ]
+
+    result_data = {
+        "user_id": req.user_id,
+        "test_id": req.test_id,
+        "total_score": total_score,
+        "result_level": level,
+        "radar_data": radar_data
+    }
+    supabase.table("user_test_results").insert(result_data).execute()
+    
+    return {
+        "status": "success",
+        "total_score": total_score,
+        "result_level": level,
+        "radar_data": radar_data,
+        "suggestion": f"根据您的得分，您的焦虑水平处于 {level} 状态。建议尝试我们的 CBT Agent 模块进行调节。"
+    }
