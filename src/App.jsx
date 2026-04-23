@@ -844,6 +844,10 @@ const AuthModal = ({ isOpen, onClose }) => {
       }
 
       const data = await response.json();
+      console.log("后端返回的真实数据:", data);
+      if (data.status === 'error') {
+        throw new Error(data.message);
+      }
       console.log('Success:', data);
 
       // 成功后的处理
