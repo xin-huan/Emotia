@@ -1,0 +1,30 @@
+[33mdc53671[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m HEAD@{0}: reset: moving to HEAD@{1}
+[33m37ee6f5[m HEAD@{1}: pull origin main: Merge made by the 'ort' strategy.
+[33mdc53671[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m HEAD@{2}: commit: 保存我写的代码
+[33m635e230[m HEAD@{3}: reset: moving to HEAD@{1}
+[33m5e3b207[m HEAD@{4}: pull origin main: Merge made by the 'ort' strategy.
+[33m635e230[m HEAD@{5}: checkout: moving from main to main
+[33m635e230[m HEAD@{6}: checkout: moving from main to main
+[33m635e230[m HEAD@{7}: reset: moving to HEAD
+[33m635e230[m HEAD@{8}: commit: 本地开发内容保存
+[33m3e4a216[m HEAD@{9}: pull origin main: updating HEAD
+[33m3e4a216[m HEAD@{10}: pull origin main: updating HEAD
+[33m3e4a216[m HEAD@{11}: checkout: moving from main to main
+[33m3e4a216[m HEAD@{12}: checkout: moving from feature-zhx to main
+[33m12a015a[m[33m ([m[1;32mfeature-zhx[m[33m)[m HEAD@{13}: commit: 论坛界面加入
+[33md594ccd[m HEAD@{14}: checkout: moving from main to feature-zhx
+[33m3e4a216[m HEAD@{15}: reset: moving to HEAD
+[33m3e4a216[m HEAD@{16}: checkout: moving from main to main
+[33m3e4a216[m HEAD@{17}: commit (merge): resolve conflict: AuthModal.jsx
+[33m3f819ca[m HEAD@{18}: commit: save local changes
+[33m113482d[m[33m ([m[1;31morigin/feature-zhx[m[33m)[m HEAD@{19}: checkout: moving from main to main
+[33m113482d[m[33m ([m[1;31morigin/feature-zhx[m[33m)[m HEAD@{20}: checkout: moving from main to main
+[33m113482d[m[33m ([m[1;31morigin/feature-zhx[m[33m)[m HEAD@{21}: checkout: moving from main to main
+[33m113482d[m[33m ([m[1;31morigin/feature-zhx[m[33m)[m HEAD@{22}: checkout: moving from main to main
+[33m113482d[m[33m ([m[1;31morigin/feature-zhx[m[33m)[m HEAD@{23}: checkout: moving from main to main
+[33m113482d[m[33m ([m[1;31morigin/feature-zhx[m[33m)[m HEAD@{24}: commit: 认识emotia页面实现
+[33m354f864[m HEAD@{25}: pull origin main: Fast-forward
+[33m5e72908[m HEAD@{26}: checkout: moving from feature-zhx to main
+[33md594ccd[m HEAD@{27}: commit: zhx加入前端代码
+[33m5e72908[m HEAD@{28}: checkout: moving from main to feature-zhx
+[33m5e72908[m HEAD@{29}: clone: from https://github.com/xin-huan/web.git

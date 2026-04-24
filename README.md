@@ -42,7 +42,9 @@ git pull origin main
 
 ### 第二步：启动后端
 cd到backend目录，在 backend 目录下运行：
+```python
 uvicorn app.main:app --reload
+```
 (看到“ML模型加载完毕”就说明后台大脑开了)
 如果报错一般是缺少agent需要的库，全安装就好了
 

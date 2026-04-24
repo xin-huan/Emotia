@@ -34,3 +34,8 @@ backend/roberta_cbt_scorer_best/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+
+node_modules/
+dist/
+build/
+.DS_Store

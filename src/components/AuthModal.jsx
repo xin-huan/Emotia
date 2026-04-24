@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 
-const AuthModal = ({ isOpen, onClose }) => {
-  const [isLogin, setIsLogin] = useState(true); // 初始为登录模式
+const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
+  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // 后端接口地址 (联调时建议写死你的局域网IP或localhost)
   const API_BASE = 'http://localhost:8000/api';
 
   if (!isOpen) return null;
@@ -14,25 +13,30 @@ const AuthModal = ({ isOpen, onClose }) => {
   const handleSubmit = async () => {
     setLoading(true);
     const endpoint = isLogin ? '/login' : '/signup';
-    
+
     try {
       const response = await fetch(`${API_BASE}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      
+
       const resData = await response.json();
 
       if (response.ok && resData.status === 'success') {
-        // 🚀 核心动作：登录成功，把 user_id 存入本地浏览器
-        // 这样以后聊天、看历史记录都能带上身份
         const userData = isLogin ? resData.data : resData;
+
+        // 1. 存入本地
         localStorage.setItem('user_id', userData.user_id);
-        
+        localStorage.setItem('user_email', email); // 额外存一下邮箱显示名字用
+
         alert(`${isLogin ? '登录' : '注册'}成功！`);
-        onClose(); // 关闭弹窗
-        window.location.reload(); // 刷新页面让主页识别到已登录状态
+
+        // 2. 通知父组件更新状态，不再需要强制刷新页面
+        if (onLoginSuccess) {
+          onLoginSuccess({ user_id: userData.user_id, email: email });
+        }
+        onClose();
       } else {
         alert(resData.detail || resData.message || '操作失败，请重试');
       }
@@ -52,7 +56,7 @@ const AuthModal = ({ isOpen, onClose }) => {
         >
           ✕
         </button>
-        
+
         <h2 className="text-3xl font-black text-wysa-green mb-6 text-center">
           {isLogin ? '欢迎回来' : '开启疗愈之旅'}
         </h2>
@@ -72,8 +76,8 @@ const AuthModal = ({ isOpen, onClose }) => {
             onChange={(e) => setPassword(e.target.value)}
             className="w-full p-4 rounded-2xl border bg-gray-50 outline-none focus:border-wysa-green transition-all"
           />
-          
-          <button 
+
+          <button
             onClick={handleSubmit}
             disabled={loading}
             className={`w-full py-4 text-white rounded-full font-bold text-lg transition-all shadow-lg ${
@@ -83,10 +87,9 @@ const AuthModal = ({ isOpen, onClose }) => {
             {loading ? '处理中...' : (isLogin ? '立即登录' : '立即注册')}
           </button>
 
-          {/* 切换模式的文案 */}
           <p className="text-center text-gray-500 text-sm mt-4">
             {isLogin ? "还没有账号？" : "已有账号？"}
-            <span 
+            <span
               onClick={() => setIsLogin(!isLogin)}
               className="text-wysa-green font-bold cursor-pointer ml-1 hover:underline"
             >

@@ -15,8 +15,8 @@ import GooeyNav from '../GooeyNav';
 const navItems = [
   { label: '首页', href: '/' },
   { label: '认识', href: '/about' },
-  { label: '互动论坛', href: '#' },
-  { label: 'Agent互动', href: '#' },
+  { label: '互动论坛', href: '/interactive' },
+  { label: 'Agent互动', href: '/Agent' },
   { label: '测试', href: '#' },
   { label: '活动打卡', href: '#' },
   { label: '个人空间', href: '#' }
@@ -164,7 +164,7 @@ const ServeForSection = () => (
     </h2>
     <div className="flex flex-col lg:flex-row justify-between items-stretch gap-10 h-[460px] w-full max-w-7xl mx-auto">
       <div className="w-full lg:w-1/2 h-full bg-black rounded-[40px] overflow-hidden shadow-2xl relative border-4 border-white">
-        <video className="absolute top-0 left-0 w-full h-full object-cover" controls preload="metadata" src="/video.mp4">
+        <video className="absolute top-0 left-0 w-full h-full object-cover" controls preload="metadata" src="/cbt.mp4">
           您的浏览器不支持视频播放。
         </video>
       </div>
@@ -419,7 +419,7 @@ const FeaturesSection = () => {
     <section className="py-24 px-12 md:px-24 w-full relative">
       <h2 className="text-6xl font-extrabold mb-12 text-left text-wysa-green">what can we do</h2>
       <div className="w-full h-[350px] rounded-[50px] mb-16 shadow-xl overflow-hidden relative group">
-        <img src="/q (1).png" alt="Features Banner" className="w-full h-full object-cover relative z-0" />
+        <img src="/about3.png" alt="Features Banner" className="w-full h-full object-cover object-[55%_20%] relative z-0" />
         <div className="absolute inset-0 z-10 pointer-events-none opacity-90 mix-blend-screen">
           <ShapeBlur variation={0} shapeSize={2.0} roundness={0.8} borderSize={0.02} />
         </div>
