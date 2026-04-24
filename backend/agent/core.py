@@ -2,7 +2,7 @@
 
 from langchain_core.messages import HumanMessage
 # 因为 core.py 和 agent.py 在同一个文件夹下，我们用 .agent
-from .agent import app as cbt_workflow 
+from agent.agenthou import app as cbt_workflow 
 
 # 临时内存数据库，存放每个用户的 CBT 状态（Session 记忆）
 session_store = {}
