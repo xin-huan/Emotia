@@ -20,9 +20,9 @@ from langchain_openai import OpenAIEmbeddings
 # 0. 全局加载 ML 模型与 Supabase 数据库
 # ==========================================
 # --- 填入你刚才保存的 URL 和 KEY ---
-SUPABASE_URL = "https://xzflljgbplwshdzhudly.supabase.co"
-SUPABASE_KEY = "sb_secret_hzG4sRO5IwSv6qJKNGfrkg_JweQtjsg "
-SILICONFLOW_API_KEY = "sk-gcddcehjauehmtzpslnzjpmiggymcuaxsnvvwufzwxiflyck"
+SUPABASE_URL = ""
+SUPABASE_KEY = ""
+SILICONFLOW_API_KEY = ""
 
 print("⏳ 正在连接 Supabase 数据库...")
 try:

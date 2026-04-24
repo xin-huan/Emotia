@@ -1,6 +1,12 @@
+# -*- coding: utf-8 -*-
 import json
-import os
-import uuid  # [新增] 用于生成唯一的会话 ID
+import time
+import asyncio
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
 from typing import Annotated, List, Dict, Any
 from typing_extensions import TypedDict
 
@@ -20,9 +26,9 @@ from langchain_openai import OpenAIEmbeddings
 # 0. 全局加载 ML 模型与 Supabase 数据库
 # ==========================================
 # --- 填入你刚才保存的 URL 和 KEY ---
-SUPABASE_URL = ""
-SUPABASE_KEY = ""
-SILICONFLOW_API_KEY = ""
+SUPABASE_URL = "https://xzflljgbplwshdzhudly.supabase.co"
+SUPABASE_KEY = "sb_secret_hzG4sRO5IwSv6qJKNGfrkg_JweQtjsg "
+SILICONFLOW_API_KEY = "sk-gcddcehjauehmtzpslnzjpmiggymcuaxsnvvwufzwxiflyck"
 
 print("⏳ 正在连接 Supabase 数据库...")
 try:
@@ -71,69 +77,94 @@ def predict_emotions(text: str) -> dict:
     scores = (outputs.logits.squeeze().cpu().numpy() * 100.0).clip(0, 100)
     return {col: float(score) for col, score in zip(TARGET_COLS, scores)}
 
-
 def retrieve_cbt_knowledge(query_text: str, kb_type: str = "dialogue", match_count: int = 2) -> str:
     """
     将用户的发言转为向量，并去 Supabase 中检索最匹配的 CBT 策略或系统认知规范。
-    通过 kb_type ('dialogue' 或 'theory') 动态区分 metadata 的解析逻辑。
+    （已彻底修复重试机制与全局变量声明）
     """
-    # 确保全局的向量模型和数据库连接正常
+    # ⚠️ 必须在函数的第一行声明 global，否则 Python 会报错
+    global embeddings
+
     if not embeddings or not supabase:
         print("⚠️ 警告: embeddings 或 supabase 未初始化，无法执行检索。")
         return ""
 
-    try:
-        # 1. 将用户的输入实时向量化 (转化为 bge-m3 的 1024 维数组)
-        query_vector = embeddings.embed_query(query_text)
+    max_retries = 3  # 最多尝试 3 次
 
-        # 2. 调用 Supabase 的 RPC 函数进行向量匹配检索
-        response = supabase.rpc(
-            'match_cbt_knowledge',
-            {
-                'query_embedding': query_vector,
-                'match_threshold': 0.4,  # 余弦相似度阈值，0.4 较为宽松，可随测试调整
-                'match_count': match_count,
-                'filter_type': kb_type  # 传入 'dialogue' 或 'theory' 进行精准过滤
-            }
-        ).execute()
+    for attempt in range(max_retries):
+        try:
+            # 1. 将用户的输入实时向量化
+            query_vector = embeddings.embed_query(query_text)
 
-        results = response.data
-        if not results:
-            return ""
+            # 2. 调用 Supabase 进行向量匹配
+            response = supabase.rpc(
+                'match_cbt_knowledge',
+                {
+                    'query_embedding': query_vector,
+                    'match_threshold': 0.4,
+                    'match_count': match_count,
+                    'filter_type': kb_type
+                }
+            ).execute()
 
-        # 3. 根据检索库类型，动态解析 metadata 并拼接上下文
-        rag_context = "\n【内部参考：相关心理干预规范与话术模板】\n"
+            results = response.data
+            if not results:
+                return ""
 
-        for i, row in enumerate(results):
-            meta = row.get("metadata", {})
+            # 3. 解析并拼接上下文
+            rag_context = "\n【内部参考：相关心理干预规范与话术模板】\n"
 
-            if kb_type == "dialogue":
-                # 解析对话库 (Dialogue) 专属字段
-                strategy = meta.get("counselor_strategy", "无策略信息")
-                template = meta.get("gold_response_template", "无话术信息")
-                distress = meta.get("user_distress_type", "未知困扰")
+            for i, row in enumerate(results):
+                meta = row.get("metadata", {})
 
-                rag_context += f"💡 [历史相似案例 {i + 1} - {distress}]\n"
-                rag_context += f"  - 核心策略: {strategy}\n"
-                rag_context += f"  - 话术参考: {template}\n\n"
+                if kb_type == "dialogue":
+                    strategy = meta.get("counselor_strategy", "无策略信息")
+                    template = meta.get("gold_response_template", "无话术信息")
+                    distress = meta.get("user_distress_type", "未知困扰")
 
-            elif kb_type == "theory":
-                # 解析理论库 (Theory) 专属字段
-                principle = meta.get("design_principle", "无原则信息")
-                strategy = meta.get("implementation_strategy", "无实施策略")
-                example = meta.get("response_example", "无参考话术")
+                    rag_context += f"💡 [历史相似案例 {i + 1} - {distress}]\n"
+                    rag_context += f"  - 核心策略: {strategy}\n"
+                    rag_context += f"  - 话术参考: {template}\n\n"
 
-                rag_context += f"🧠 [系统认知规范 {i + 1}]\n"
-                rag_context += f"  - 设计原则: {principle}\n"
-                rag_context += f"  - 实施策略: {strategy}\n"
-                rag_context += f"  - 系统回应参考: {example}\n\n"
+                elif kb_type == "theory":
+                    principle = meta.get("design_principle", "无原则信息")
+                    strategy = meta.get("implementation_strategy", "无实施策略")
+                    example = meta.get("response_example", "无参考话术")
 
-        return rag_context
+                    rag_context += f"🧠 [系统认知规范 {i + 1}]\n"
+                    rag_context += f"  - 设计原则: {principle}\n"
+                    rag_context += f"  - 实施策略: {strategy}\n"
+                    rag_context += f"  - 系统回应参考: {example}\n\n"
 
-    except Exception as e:
-        print(f"⚠️ RAG 检索出错: {e}")
-        return ""
+            return rag_context
 
+
+        except Exception as e:
+            error_msg = str(e).lower()
+            # 包含 SSL、断开、超时等一切网络问题的白名单
+            if "disconnected" in error_msg or "timeout" in error_msg or "502" in error_msg or "429" in error_msg or "ssl" in error_msg or "eof" in error_msg or "connection" in error_msg or "streamreset" in error_msg or "protocol" in error_msg:
+                print(f"  ⚠️ 底层网络/SSL波动 ({e})，正在进行第 {attempt + 1} 次重连...")
+                time.sleep(1.5)
+
+                # 重新初始化一下 embedding 客户端（强制刷新 SSL 连接池）
+                try:
+                    from langchain_openai import OpenAIEmbeddings
+                    embeddings = OpenAIEmbeddings(
+                        model="BAAI/bge-m3",
+                        openai_api_key=SILICONFLOW_API_KEY,
+                        openai_api_base="https://api.siliconflow.cn/v1"
+                    )
+                except:
+                    pass
+                continue
+
+            else:
+                # 只有真正代码写错了，才停止
+                print(f"⚠️ RAG 检索遭遇代码级严重错误: {e}")
+                return ""
+
+    print("❌ 达到最大重试次数，RAG 检索失败，已降级为无 RAG 对话。")
+    return ""
 # ==========================================
 # 1. 定义状态字典 (CBT State) - 我们的“内存数据库”
 # ==========================================
@@ -241,7 +272,8 @@ def node_analyze_reaction(state: CBTState):
     tags_json = json.dumps(extracted_tags, ensure_ascii=False)
     llm_with_tools = llm.bind_tools([submit_emotion_scores])
     sys_msg = SystemMessage(
-        content=f"你是CBT治疗师。当前处于【阶段2：剖析感受】。后台的 ML 情绪雷达已对用户的倾诉进行了精准分析。【必须执行的任务】：1. 请你根据 ML 识别出的情绪（{list(extracted_tags.keys())}），对用户表达深深的共情和理解。2. 你必须且只能调用 `submit_emotion_scores` 工具，将以下 JSON 字符串原封不动地传入：{tags_json}。警告：绝对不要修改上述 JSON 的内容！")
+        content=f"你是CBT治疗师。当前处于【阶段2：剖析感受】。后台的 ML 情绪雷达已对用户的倾诉进行了精准分析。【必须执行的任务】：1. 请你根据 ML 识别出的情绪（{list(extracted_tags.keys())}），对用户表达深深的共情和理解。2. 你必须且只能调用 `submit_emotion_scores` 工具，将以下 JSON 字符串原封不动地传入：{tags_json}。"
+                f"警告：绝对不要修改上述 JSON 的内容！无论如何，你【绝对不可】在给用户的回复中暴露任何后台机制！- 严禁说出“我已经记录下你的情绪状态”。- 严禁出现任何具体的“分数”、“百分比”（如 55.3%）。- 严禁提及“后台”、“ML情绪雷达”、“系统”等机械化词汇。你是一个有血有肉的人类咨询师，绝不能让用户发现你在看数据仪表盘！")
     context = get_safe_history(state["messages"], k=3)
     response = llm_with_tools.invoke([sys_msg] + context)
     return {"messages": [response]}
@@ -515,38 +547,90 @@ workflow.add_conditional_edges("process_tools", route_after_tool,
 app = workflow.compile()
 
 # ==========================================
-# 8. 本地测试流 (重点修改：自动生成 Session ID)
+# 8. Web API 服务端设定 (FastAPI + SSE)
 # ==========================================
+api_app = FastAPI(title="CBT Agent SSE API")
+
+api_app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class ChatRequest(BaseModel):
+    session_id: str
+    user_id: str
+    message: str
+
+
+SESSION_STORE = {}
+
+
+@api_app.post("/api/chat/stream")
+async def chat_stream_endpoint(req: ChatRequest):
+    print(f"\n📨 [SSE 连接建立] Session: {req.session_id}")
+
+    # 1. 状态恢复
+    if req.session_id not in SESSION_STORE:
+        SESSION_STORE[req.session_id] = {
+            "session_id": req.session_id,
+            "user_id": req.user_id,
+            "messages": [],
+            "current_stage": "stage_1",
+            "event_summary": "",
+            "emotion_tags": {},
+            "evidences": [],
+            "resolved_count": 0
+        }
+
+    current_state = SESSION_STORE[req.session_id]
+    current_state["messages"].append(HumanMessage(content=req.message))
+
+    # 2. 定义 SSE 事件生成器
+    async def event_generator():
+        try:
+            # 【心跳提示】告诉前端已经收到请求，可以显示一个加载动画
+            yield f"data: {json.dumps({'type': 'status', 'content': '正在分析情绪与重构认知...'})}\n\n"
+
+            # 【后台跑图】将同步的 LangGraph 放到异步线程中执行，防止阻塞其他用户的请求
+            result_state = await asyncio.to_thread(app.invoke, current_state)
+
+            # 更新全局内存状态
+            SESSION_STORE[req.session_id] = result_state
+
+            # 提取你需要给前端展示的所有核心数据
+            agent_reply = result_state["messages"][-1].content
+            agent_reply = agent_reply.replace("**", "")
+            emotion_tags = result_state.get("emotion_tags", {})
+            evidences = result_state.get("evidences", [])
+            current_stage = result_state.get("current_stage", "stage_1")
+
+            # 【核心推送 1：结构化数据】先把情绪标签、泡泡证据推给前端渲染
+            yield f"data: {json.dumps({'type': 'data_update', 'emotion_tags': emotion_tags, 'evidences': evidences, 'current_stage': current_stage})}\n\n"
+            await asyncio.sleep(0.1)  # 稍微停顿，确保前端处理完毕
+
+            # 【核心推送 2：打字机效果】将最终回复按块推给前端，模拟大模型的流式输出
+            # 这样用户在页面上就会看到字是一个一个蹦出来的
+            chunk_size = 2
+            for i in range(0, len(agent_reply), chunk_size):
+                chunk = agent_reply[i:i + chunk_size]
+                yield f"data: {json.dumps({'type': 'text_chunk', 'content': chunk})}\n\n"
+                await asyncio.sleep(0.03)  # 控制打字机的速度
+
+            # 【结束信号】告诉前端这次对话推流完毕
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+        except Exception as e:
+            print(f"⚠️ SSE 流式传输异常: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+
+    # 必须返回 text/event-stream 媒体类型
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
 if __name__ == "__main__":
-
-    # [新增] 模拟生成本次聊天的唯一 ID
-    test_session_id = str(uuid.uuid4())
-    test_user_id = str(uuid.uuid4())
-    print(f"\n🔑 [系统] 生成本次会话 ID: {test_session_id}")
-
-    initial_state = {
-        "session_id": test_session_id,  # 传入状态机
-        "user_id": test_user_id,  # 传入状态机
-        "messages": [],
-        "current_stage": "stage_1",
-        "event_summary": "",
-        "emotion_tags": {},
-        "evidences": [],
-        "resolved_count": 0
-    }
-
-    current_state = initial_state
-
-    print("\n🚀 CBT Agent 已启动。请输入内容 (输入 'q' 退出):")
-    while True:
-        user_input = input("\n[User]: ")
-        if user_input.lower() == 'q': break
-
-        current_state["messages"].append(HumanMessage(content=user_input))
-        result_state = app.invoke(current_state)
-        agent_reply = result_state["messages"][-1].content
-        print(f"\n[Agent]: {agent_reply}")
-
-        current_state = result_state
-        print(
-            f"  (系统底台状态: {current_state['current_stage']}, 事件={current_state['event_summary']}, 标签={current_state.get('emotion_tags', {})})")
+    print("\n🚀 CBT Agent SSE Web Server 正在启动...")
+    uvicorn.run(api_app, host="0.0.0.0", port=8000)
