@@ -47,7 +47,9 @@ def process_cbt_chat(session_id: str, user_id: str, message: str) -> dict:
     
     return {
         "reply": agent_reply,
-        "emotion_tags": emotions,
-        "cbt_stage": result_state.get("current_stage", "stage_1"),
-        "session_id": session_id # 传回给前端，让前端记住这次对话
+        # 传递完整的情绪字典 {"无助": 67.5, ...}
+        "full_emotions": result_state.get("emotion_tags", {}), 
+        # 传递证据列表
+        "evidences": result_state.get("evidences", []),
+        "cbt_stage": result_state.get("current_stage", "stage_1")
     }

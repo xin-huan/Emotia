@@ -1,9 +1,12 @@
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from datetime import date
 import os
+import json
+import asyncio
 
 # 导入你的包装器和数据库
 from agent.core import process_cbt_chat
@@ -60,20 +63,34 @@ def index():
     return {"status": "online"}
 
 # 1. 聊天接口
-@app.post("/api/chat")
+@app.post("/api/chat/stream")
 async def chat_endpoint(req: ChatRequest):
-    # A. 存入用户消息到数据库
+    # 🚀 [核心修复] 先在 cbt_sessions 表里占个位
+    # 这样数据库就知道这个 session_id 是合法的了
+    preview_text = (req.message[:15] + '...') if len(req.message) > 15 else req.message
+    try:
+        supabase.table("cbt_sessions").upsert({
+            "id": req.session_id,
+            "user_id": req.user_id,
+            "raw_event": f"🗨️ {preview_text}" # 临时占位，后续 Agent 会更新它
+        }).execute()
+    except Exception as e:
+        print(f"⚠️ 初始化会话失败: {e}")
+        # 这里如果失败通常是因为 user_id 不在 auth.users 里
+    # 1. 记录用户消息
     user_msg_data = {
         "session_id": req.session_id,
         "sender": "user",
-        "content": req.message
+        "content": req.message,
+        "user_id": req.user_id
     }
     supabase.table("chat_messages").insert(user_msg_data).execute()
 
-    # B. 调用 Agent 核心逻辑
+    # 2. 调用 Agent 获取结果 (这个过程可能需要几秒)
+    # 注意：这里我们拿到了完整的 agent_res 字典
     agent_res = process_cbt_chat(req.session_id, req.user_id, req.message)
 
-    # C. 存入 Agent 回复到数据库
+    # 3. 记录 Agent 消息
     agent_msg_data = {
         "session_id": req.session_id,
         "sender": "agent",
@@ -82,7 +99,34 @@ async def chat_endpoint(req: ChatRequest):
     }
     supabase.table("chat_messages").insert(agent_msg_data).execute()
 
-    return agent_res
+# 4. 🚀 构造 SSE 生成器，按前端需要的 data: 格式吐出数据
+    async def sse_generator():
+        # 第一步：发送白盒数据和状态（一次性给过去）
+        whitebox_data = {
+            'type': 'data_update', 
+            'emotion_tags': agent_res.get('full_emotions', {}), 
+            'evidences': agent_res.get('evidences', [])
+        }
+        yield f"data: {json.dumps(whitebox_data, ensure_ascii=False)}\n\n"
+        
+        # 第二步：将完整的回复拆成一个一个字（或小片段）
+        full_reply = agent_res['reply']
+        
+        # 我们按每 2 个字一组进行拆分，模拟真实打字速度
+        chunk_size = 2 
+        for i in range(0, len(full_reply), chunk_size):
+            chunk = full_reply[i:i + chunk_size]
+            text_data = {'type': 'text_chunk', 'content': chunk}
+            yield f"data: {json.dumps(text_data, ensure_ascii=False)}\n\n"
+            
+            # 💡 关键点：每吐几个字，歇个 0.05 秒
+            # 这样前端就能看到字是一个个蹦出来的，交互感瞬间拉满
+            await asyncio.sleep(0.03) 
+        
+        # 第三步：发送结束信号
+        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+    return StreamingResponse(sse_generator(), media_type="text/event-stream")
 
 # 2. 注册接口 (增强版)
 @app.post("/api/signup")
@@ -231,3 +275,29 @@ def submit_test(req: TestSubmitRequest):
         "radar_data": radar_data,
         "suggestion": f"根据您的得分，您的焦虑水平处于 {level} 状态。建议尝试我们的 CBT Agent 模块进行调节。"
     }
+
+
+# 1. 获取用户的会话清单 (个人空间列表页用)
+@app.get("/api/user/sessions/{user_id}")
+def get_user_sessions(user_id: str):
+    # 从 cbt_sessions 表里查，按时间倒序排列
+    res = supabase.table("cbt_sessions") \
+        .select("id, created_at, raw_event") \
+        .eq("user_id", user_id) \
+        .order("created_at", desc=True) \
+        .execute()
+    return res.data
+
+# 2. 获取某个具体会话的聊天记录 (点击进入详情用)
+@app.get("/api/chat/history/{session_id}")
+def get_chat_history(session_id: str):
+    # 强行去掉可能的引号
+    s_id = session_id.strip('"').strip("'")
+    
+    # 从 chat_messages 表里查出这一轮聊的所有话
+    res = supabase.table("chat_messages") \
+        .select("sender, content, created_at") \
+        .eq("session_id", s_id) \
+        .order("created_at", desc=False) \
+        .execute()
+    return res.data
