@@ -221,7 +221,7 @@ const Interactive = () => {
   };
 
   return (
-    <ClickSpark sparkColor='wysa-pink'>
+    <ClickSpark sparkColor='#E58889'>
       {/* 1. 背景层 */}
       <div className="fixed inset-0 z-0">
         <Ballpit
@@ -262,7 +262,7 @@ const Interactive = () => {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto pb-24">
+        <div className="max-w-7xl mx-auto pt-8 pb-24">
           <h1 className="text-4xl md:text-5xl font-extrabold text-wysa-green mb-4 drop-shadow-sm">
             互动论坛
           </h1>

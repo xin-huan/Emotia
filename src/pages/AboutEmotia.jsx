@@ -154,7 +154,7 @@ const AboutEmotia = () => {
 
                     <div className="bg-white rounded-[40px] shadow-sm border border-gray-50 overflow-hidden hover:shadow-lg transition-all duration-300 group">
                        <div className="w-full h-48 md:h-56 bg-gray-100 overflow-hidden relative">
-                          <img src="/7.png" alt="AI Agent" className="w-full h-full object-cover object-[50%_40%] transition-transform duration-700 group-hover:scale-105" />
+                          <img src="/4.jpg" alt="AI Agent" className="w-full h-full object-cover object-[50%_40%] transition-transform duration-700 group-hover:scale-105" />
                        </div>
                        <div className="p-8 md:p-12">
                           <h3 className="text-2xl font-bold mb-4 text-wysa-green">AI 心理陪伴的未来边界</h3>

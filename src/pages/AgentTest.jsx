@@ -154,7 +154,7 @@ const loadHistoryDetail = async (sid) => {
   };
 
   return (
-    <div style={{ display: 'flex', gap: '20px', padding: '20px', fontFamily: 'sans-serif' }}>
+    <div style={{ display: 'flex', gap: '20px', padding: '20px',paddingTop: '100px', fontFamily: 'sans-serif' }}>
 
       {/* 左侧：聊天框 */}
       <div style={{ flex: 2, border: '1px solid #ccc', padding: '10px', borderRadius: '8px' }}>

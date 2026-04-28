@@ -7,7 +7,7 @@ const navItems = [
   { label: '认识', href: '/about' },
   { label: '互动论坛', href: '/interactive' },
   { label: 'Agent互动', href: '/Agent' },
-  { label: '测试', href: '#' },
+  { label: '测试', href: '/Test' },
   { label: '活动打卡', href: '#' },
   { label: '个人空间', href: '#' }
 ];

@@ -6,7 +6,7 @@ import Navbar from './components/Navbar';
 import AuthModal from './components/AuthModal';
 import Interactive from './pages/Interactive';
 import Agent from './pages/AgentTest';
-
+import Test from './pages/Test';
 function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [user, setUser] = useState(null);
@@ -46,6 +46,7 @@ function App() {
         <Route path="/about" element={<AboutEmotia />} />
         <Route path="/interactive" element={<Interactive />} />
         <Route path="/agent" element={<Agent />} />
+        <Route path="/Test" element={<Test />} />
       </Routes>
 
       <AuthModal
