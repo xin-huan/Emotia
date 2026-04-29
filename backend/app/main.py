@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
@@ -7,6 +8,7 @@ from datetime import date
 import os
 import json
 import asyncio
+import random
 
 # 导入你的包装器和数据库
 from agent.core import process_cbt_chat
@@ -50,6 +52,10 @@ class AnswerCreate(BaseModel):
     post_id: str
     user_id: str
     content: str
+
+class LikeToggleRequest(BaseModel):
+    user_id: str
+    post_id: str
 
 class TestSubmitRequest(BaseModel):
     user_id: str
@@ -192,22 +198,6 @@ def get_categories():
     res = supabase.table("forum_categories").select("*").execute()
     return res.data
 
-@app.get("/api/forum/posts")
-def get_posts(category_id: int = None):
-    query = supabase.table("forum_posts").select("*, profiles(username, avatar_url), forum_categories(name)")
-    if category_id:
-        query = query.eq("category_id", category_id)
-    res = query.order("created_at", desc=True).execute()
-    return res.data
-
-@app.post("/api/forum/posts")
-def create_post(post: PostCreate):
-    try:
-        data = post.dict()
-        res = supabase.table("forum_posts").insert(data).execute()
-        return {"status": "success", "data": res.data}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
 
 @app.get("/api/forum/posts/{post_id}")
 def get_post_detail(post_id: str):
@@ -230,6 +220,85 @@ def create_answer(ans: AnswerCreate):
 def get_my_posts(user_id: str):
     res = supabase.table("forum_posts").select("*").eq("user_id", user_id).execute()
     return res.data
+
+@app.get("/api/forum/posts")
+def get_posts(sort: str = "latest", category_id: int = None, viewer_id: str = None):
+    # 1. 基础查询：拿到所有数据
+    query = supabase.table("forum_posts").select(
+        "*, profiles!user_id(username, avatar_url), forum_likes(count), forum_answers(count)"
+    )
+    if category_id:
+        query = query.eq("category_id", category_id)
+        
+    res = query.execute()
+    all_data = res.data
+
+    # 2. 查询当前用户点赞过的 ID 列表
+    liked_post_ids = []
+    # 增加对 "null" 和 "" 的判断，防止前端传参不规范
+    if viewer_id and viewer_id not in ["undefined", "null", ""]:
+        likes_res = supabase.table("forum_likes").select("post_id").eq("user_id", viewer_id).execute()
+        liked_post_ids = [item['post_id'] for item in likes_res.data]
+
+    # 3. 根据 sort 类型，处理【排序】和【截断数量】
+    if sort == "hot":
+        # 热榜：按点赞排，取 10 条
+        for post in all_data:
+            likes = post['forum_likes'][0]['count'] if post['forum_likes'] else 0
+            answers = post['forum_answers'][0]['count'] if post['forum_answers'] else 0
+            post['hot_score'] = likes + answers
+        processed_posts = sorted(all_data, key=lambda x: x.get('hot_score', 0), reverse=True)
+        processed_posts = processed_posts[:10]
+    elif sort == "random":
+        # 换一批：打乱，取 3 条
+        random.shuffle(all_data)
+        processed_posts = all_data[:3]
+    else:
+        # 最新：按时间排，取 3 条
+        processed_posts = sorted(all_data, key=lambda x: x['created_at'], reverse=True)
+        processed_posts = processed_posts[:3]
+
+    # 4. 🚀 统一返回（这步最关键，必须把 posts 和 liked_post_ids 一起包起来）
+    return {
+        "posts": processed_posts,
+        "liked_post_ids": liked_post_ids
+    }
+
+
+# 2. 完善点赞接口 (如果之前没写或点不动)
+@app.post("/api/forum/like/toggle")
+def toggle_like(req: dict): # 简单的 dict 接收即可
+    user_id = req.get("user_id")
+    post_id = req.get("post_id")
+    
+    # 检查是否已点赞
+    existing = supabase.table("forum_likes").select("*").eq("post_id", post_id).eq("user_id", user_id).execute()
+    
+    if existing.data:
+        # 已有记录则删除 (取消点赞)
+        supabase.table("forum_likes").delete().eq("post_id", post_id).eq("user_id", user_id).execute()
+        return {"status": "unliked"}
+    else:
+        # 没有则插入 (点赞)
+        supabase.table("forum_likes").insert({"post_id": post_id, "user_id": user_id}).execute()
+        return {"status": "liked"}
+
+# C. 个人空间：获取我的通知
+@app.get("/api/user/notifications/{user_id}")
+def get_notifications(user_id: str):
+    res = supabase.table("notifications") \
+        .select("*, actor:profiles!notifications_actor_id_fkey(username), post:forum_posts(content)") \
+        .eq("receiver_id", user_id) \
+        .eq("is_read", False) \
+        .order("created_at", desc=True) \
+        .execute()
+    return res.data
+
+# 标记消息已读
+@app.put("/api/user/notifications/read/{user_id}")
+def mark_read(user_id: str):
+    supabase.table("notifications").update({"is_read": True}).eq("receiver_id", user_id).execute()
+    return {"status": "success"}
 
 # ======= 心理测评模块 API =======
 
