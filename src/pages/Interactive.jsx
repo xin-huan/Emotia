@@ -150,6 +150,9 @@ const Interactive = () => {
   // ==========================================
   // 2. 状态管理
   // ==========================================
+  const [latestQuestions, setLatestQuestions] = useState([]); // 最新问题
+  const [hotQuestions, setHotQuestions] = useState([]);       // 讨论热榜
+  const [myLikedIds, setMyLikedIds] = useState(new Set()); // 存储当前用户点赞过的帖子ID
 
   const [selectedArticle, setSelectedArticle] = useState(null);
   const [selectedQuestion, setSelectedQuestion] = useState(null);
@@ -163,61 +166,194 @@ const Interactive = () => {
 
   const [hasNewMessage, setHasNewMessage] = useState(true);
 
+
+  // ==========================================
+  // 3. API 请求函数
+  // ==========================================
+
+  // const fetchRandomQuestions = () => {
+  //   setIsRefreshing(true);
+  //   setTimeout(() => {
+  //     const shuffled = [...DATABASE_QUESTIONS].sort(() => 0.5 - Math.random());
+  //     setRandomQuestions(shuffled.slice(0, 2));
+  //     setIsRefreshing(false);
+  //   }, 600);
+  // };
+const formatData = (rawList, likedIds = []) => {
+    if (!Array.isArray(rawList)) return [];
+
+    return rawList.map(q => {
+      // 1. 获取后端算好的热度，如果没有则前端兜底算一下
+      const likes = q.forum_likes?.[0]?.count || 0;
+      const answers = q.forum_answers?.[0]?.count || 0;
+      const baseScore = q.hot_score || (likes + answers);
+      
+      return {
+        id: q.id,
+        author: q.profiles?.username || "神秘用户",
+        avatar: (q.profiles?.username || "匿")[0],
+        content: q.content,
+        likes: likes,
+        commentsCount: answers,
+        // 🚀 统一热度值（放大10倍展示）
+        hotScore: baseScore * 10, 
+        isLiked: likedIds.includes(q.id) 
+      };
+    });
+  };
+
+  // 🚀 获取所有论坛数据 (最新5条 + 热榜10条)
+  const fetchAllForumData = async () => {
+    const userId = localStorage.getItem('user_id');
+
+    setIsRefreshing(true);
+    try {
+      // 🚀 同时请求最新(3条)和热榜(10条)
+      const [resLatest, resHot] = await Promise.all([
+        fetch(`http://localhost:8000/api/forum/posts?sort=latest&viewer_id=${userId}`),
+        fetch(`http://localhost:8000/api/forum/posts?sort=hot&viewer_id=${userId}`)
+      ]);
+
+      const [jsonLatest, jsonHot] = await Promise.all([resLatest.json(), resHot.json()]);
+      // 🚀 核心：同步后端的点赞记录到前端内存
+      // 假设 data1 和 data2 返回的 liked_post_ids 是一样的
+      if (jsonLatest.liked_post_ids) {
+        setMyLikedIds(new Set(jsonLatest.liked_post_ids));
+      }
+      
+      // 使用各自返回的 liked_post_ids 进行格式化
+      setLatestQuestions(formatData(jsonLatest.posts, jsonLatest.liked_post_ids));
+      setHotQuestions(formatData(jsonHot.posts, jsonHot.liked_post_ids));
+
+    } catch (error) {
+      console.error("初始化加载失败", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // 🚀 “换一批”逻辑：从后端随机获取 5 条
+  const handleRefreshLatest = async () => {
+    const userId = localStorage.getItem('user_id');
+    setIsRefreshing(true);
+    try {
+      const res = await fetch('http://localhost:8000/api/forum/posts?sort=random&limit=5');
+      const data = await res.json();
+
+      if (data.posts) {
+        const formatted = formatData(data.posts, data.liked_post_ids);
+        setLatestQuestions(formatted);
+      }
+      
+    } catch (error) {
+      console.error("换一批失败:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // 页面初始加载
   useEffect(() => {
-    fetchRandomQuestions();
+    fetchAllForumData();
   }, []);
 
+  // 🚀 详情加载：点击问题时加载评论
   useEffect(() => {
     if (selectedQuestion) {
-      setCurrentComments(MOCK_COMMENTS[selectedQuestion.id] || []);
-    } else {
-      setCommentText('');
+      fetch(`http://localhost:8000/api/forum/posts/${selectedQuestion.id}`)
+        .then(res => res.json())
+        .then(data => {
+            setCurrentComments(formatData(data.answers || []));
+        });
     }
   }, [selectedQuestion]);
 
-  // ==========================================
-  // 3. 模拟 API 请求函数
-  // ==========================================
-
-  const fetchRandomQuestions = () => {
-    setIsRefreshing(true);
-    setTimeout(() => {
-      const shuffled = [...DATABASE_QUESTIONS].sort(() => 0.5 - Math.random());
-      setRandomQuestions(shuffled.slice(0, 2));
-      setIsRefreshing(false);
-    }, 600);
-  };
-
-  const handlePostQuestion = () => {
+  // 🚀 发布问题
+  const handlePostQuestion = async () => {
     if (!questionText.trim()) return;
-    alert("模拟请求：发布问题成功！");
-    setQuestionText('');
-    fetchRandomQuestions();
+    const userId = localStorage.getItem('user_id');
+    if (!userId) return alert("请先登录");
+
+    const res = await fetch('http://localhost:8000/api/forum/posts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: userId,
+        category_id: 1,
+        title: questionText.substring(0, 15),
+        content: questionText
+      })
+    });
+    if(res.ok) {
+        setQuestionText('');
+        fetchAllForumData(); // 发布后立即刷新全站数据
+    }
   };
 
-  const handleToggleLike = (e, questionId) => {
+  // 🚀 点赞（共鸣）逻辑
+  const handleToggleLike = async (e, questionId) => {
     e.stopPropagation();
-    setRandomQuestions(prev => prev.map(q => {
-      if (q.id === questionId) {
-        return { ...q, isLiked: !q.isLiked, likes: q.isLiked ? q.likes - 1 : q.likes + 1 };
+    const userId = localStorage.getItem('user_id');
+    if (!userId) return alert("请先登录");
+
+    // 🚀 1. 乐观更新：立刻修改本地 UI 状态
+    // 我们在两个列表中查找这个帖子，并手动修改它的点赞状态和数字
+    const updateLocalList = (list) => 
+      list.map(q => {
+        if (q.id === questionId) {
+          const isNowLiked = !q.isLiked;
+          return { 
+            ...q, 
+            isLiked: isNowLiked, 
+            likes: isNowLiked ? q.likes + 1 : Math.max(0, q.likes - 1) 
+          };
+        }
+        return q;
+      });
+
+    setLatestQuestions(prev => updateLocalList(prev));
+    setHotQuestions(prev => updateLocalList(prev));
+
+    // 🚀 2. 静默发送请求：在后台告诉后端
+    try {
+      const res = await fetch('http://localhost:8000/api/forum/like/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, post_id: questionId })
+      });
+      
+      if (!res.ok) {
+        // 如果后端报错，这里可以回滚（为了大作业简化，通常不写也没关系）
+        console.error("点赞同步失败");
       }
-      return q;
-    }));
+    } catch (error) {
+      console.error("网络异常");
+    }
+    // 💡 注意：这里不再调用 fetchAllForumData()，因为 UI 已经更新过了
   };
 
-  const handlePostComment = () => {
+  // 🚀 发布评论（回复）
+  const handlePostComment = async () => {
     if (!commentText.trim() || !selectedQuestion) return;
+    const userId = localStorage.getItem('user_id');
+    if (!userId) return alert("请先登录");
 
-    const newComment = {
-      id: Date.now(),
-      author: '我(当前用户)',
-      avatar: '我',
-      content: commentText,
-      time: '刚刚'
-    };
-
-    setCurrentComments([newComment, ...currentComments]);
-    setCommentText('');
+    const res = await fetch('http://localhost:8000/api/forum/answers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        post_id: selectedQuestion.id,
+        user_id: userId,
+        content: commentText
+      })
+    });
+    if(res.ok) {
+        setCommentText('');
+        // 刷新列表（为了让列表页的评论数更新）
+        fetchAllForumData();
+        // 刷新当前弹窗（为了看到刚发的评论）
+        setSelectedQuestion({...selectedQuestion}); 
+    }
   };
 
   return (
@@ -325,7 +461,7 @@ const Interactive = () => {
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-2xl font-bold text-wysa-green">最新问题</span>
                     <button
-                      onClick={fetchRandomQuestions}
+                      onClick={handleRefreshLatest}
                       disabled={isRefreshing}
                       className="pointer-events-auto text-sm text-wysa-coral hover:text-wysa-green flex items-center gap-1 transition-colors"
                     >
@@ -333,7 +469,7 @@ const Interactive = () => {
                     </button>
                   </div>
 
-                  {randomQuestions.map((q) => (
+                  {latestQuestions.map((q) => (
                     <div
                       key={q.id}
                       onClick={() => setSelectedQuestion(q)}
@@ -370,7 +506,7 @@ const Interactive = () => {
                     🔥 讨论热榜
                   </h3>
                   <ul className="space-y-4">
-                    {DATABASE_QUESTIONS.slice(0, 5).sort((a,b)=>b.likes - a.likes).map((topic, index) => (
+                    {hotQuestions.map((topic, index) => (
                       <li
                         key={topic.id}
                         onClick={() => setSelectedQuestion(topic)}
@@ -383,7 +519,7 @@ const Interactive = () => {
                           <p className="text-wysa-green font-medium group-hover:text-wysa-coral transition-colors line-clamp-2">
                             {topic.content}
                           </p>
-                          <span className="text-xs text-wysa-green/80">{topic.likes * 123} 热度</span>
+                          <span className="text-xs text-wysa-green/80">🔥 {topic.hotScore} 热度</span>
                         </div>
                       </li>
                     ))}
