@@ -5,7 +5,7 @@ import os
 # ==========================================
 # ⚙️ 配置区
 # ==========================================
-MODEL_DIR = "./roberta_cbt_scorer_best"  # 刚刚训练保存的权重目录
+MODEL_DIR = "../roberta_cbt_scorer_best"  # 刚刚训练保存的权重目录
 TARGET_COLS = ["焦虑", "悲伤", "生气", "羞愧", "无助", "平静", "轻松"]
 
 def draw_bar(score, max_score=100, length=20):

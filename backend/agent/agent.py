@@ -44,7 +44,7 @@ except Exception as e:
     print(f"⚠️ 向量化模型加载失败: {e}")
     embeddings = None
 
-MODEL_DIR = "./roberta_cbt_scorer_best"
+MODEL_DIR = "../roberta_cbt_scorer_best"
 TARGET_COLS = ["焦虑", "悲伤", "生气", "羞愧", "无助", "平静", "轻松"]
 NEGATIVE_EMOTIONS = ["焦虑", "悲伤", "生气", "羞愧", "无助"]
 

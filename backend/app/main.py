@@ -1,6 +1,5 @@
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
@@ -12,7 +11,7 @@ import random
 
 # 导入你的包装器和数据库
 from agent.core import process_cbt_chat
-from app.database import supabase # 确保你有这个文件
+from app.database import supabase  # 确保你有这个文件
 
 app = FastAPI(title="MindFlow CBT API")
 
@@ -25,6 +24,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # ======= 数据模型定义 =======
 
 class ChatRequest(BaseModel):
@@ -32,15 +32,18 @@ class ChatRequest(BaseModel):
     user_id: str
     message: str
 
+
 class UserAuthRequest(BaseModel):
     email: str
     password: str
+
 
 class ProfileUpdate(BaseModel):
     user_id: str
     username: Optional[str] = None
     avatar_url: Optional[str] = None
-    birthday: Optional[str] = None # 格式 "YYYY-MM-DD"
+    birthday: Optional[str] = None  # 格式 "YYYY-MM-DD"
+
 
 class PostCreate(BaseModel):
     user_id: str
@@ -48,41 +51,57 @@ class PostCreate(BaseModel):
     title: str
     content: str
 
+
 class AnswerCreate(BaseModel):
     post_id: str
     user_id: str
     content: str
 
+
 class LikeToggleRequest(BaseModel):
     user_id: str
     post_id: str
 
+
 class TestSubmitRequest(BaseModel):
     user_id: str
     test_id: str
-    answers: List[dict] # 每一题的选择，例如 [{"question_id": "xxx", "score": 2}, ...]
+    answers: List[dict]  # 每一题的选择，例如 [{"question_id": "xxx", "score": 2}, ...]
 
+
+class EmotionRequest(BaseModel):
+    user_id: str
+    emotion_score: int
+
+
+class SunshineRequest(BaseModel):
+    user_id: str
+    content: str
+
+class TaskToggleRequest(BaseModel):
+    task_id: str
+    is_completed: bool
 # ======= 核心业务接口 =======
 
 @app.get("/")
 def index():
     return {"status": "online"}
 
+
 # 1. 聊天接口
 @app.post("/api/chat/stream")
 async def chat_endpoint(req: ChatRequest):
-    # 🚀 [核心修复] 先在 cbt_sessions 表里占个位
-    # 这样数据库就知道这个 session_id 是合法的了
+    # 先在 cbt_sessions 表里占个位
     preview_text = (req.message[:15] + '...') if len(req.message) > 15 else req.message
     try:
         supabase.table("cbt_sessions").upsert({
             "id": req.session_id,
             "user_id": req.user_id,
-            "raw_event": f"🗨️ {preview_text}" # 临时占位，后续 Agent 会更新它
+            "raw_event": f"🗨️ {preview_text}"
         }).execute()
     except Exception as e:
         print(f"⚠️ 初始化会话失败: {e}")
-        # 这里如果失败通常是因为 user_id 不在 auth.users 里
+
     # 1. 记录用户消息
     user_msg_data = {
         "session_id": req.session_id,
@@ -92,8 +111,7 @@ async def chat_endpoint(req: ChatRequest):
     }
     supabase.table("chat_messages").insert(user_msg_data).execute()
 
-    # 2. 调用 Agent 获取结果 (这个过程可能需要几秒)
-    # 注意：这里我们拿到了完整的 agent_res 字典
+    # 2. 调用 Agent 获取结果
     agent_res = process_cbt_chat(req.session_id, req.user_id, req.message)
 
     # 3. 记录 Agent 消息
@@ -105,36 +123,29 @@ async def chat_endpoint(req: ChatRequest):
     }
     supabase.table("chat_messages").insert(agent_msg_data).execute()
 
-# 4. 🚀 构造 SSE 生成器，按前端需要的 data: 格式吐出数据
+    # 4. 构造 SSE 生成器
     async def sse_generator():
-        # 第一步：发送白盒数据和状态（一次性给过去）
         whitebox_data = {
-            'type': 'data_update', 
-            'emotion_tags': agent_res.get('full_emotions', {}), 
+            'type': 'data_update',
+            'emotion_tags': agent_res.get('full_emotions', {}),
             'evidences': agent_res.get('evidences', [])
         }
         yield f"data: {json.dumps(whitebox_data, ensure_ascii=False)}\n\n"
-        
-        # 第二步：将完整的回复拆成一个一个字（或小片段）
+
         full_reply = agent_res['reply']
-        
-        # 我们按每 2 个字一组进行拆分，模拟真实打字速度
-        chunk_size = 2 
+        chunk_size = 2
         for i in range(0, len(full_reply), chunk_size):
             chunk = full_reply[i:i + chunk_size]
             text_data = {'type': 'text_chunk', 'content': chunk}
             yield f"data: {json.dumps(text_data, ensure_ascii=False)}\n\n"
-            
-            # 💡 关键点：每吐几个字，歇个 0.05 秒
-            # 这样前端就能看到字是一个个蹦出来的，交互感瞬间拉满
-            await asyncio.sleep(0.03) 
-        
-        # 第三步：发送结束信号
+            await asyncio.sleep(0.03)
+
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
     return StreamingResponse(sse_generator(), media_type="text/event-stream")
 
-# 2. 注册接口 (增强版)
+
+# 2. 注册接口
 @app.post("/api/signup")
 def signup(req: UserAuthRequest):
     try:
@@ -148,7 +159,8 @@ def signup(req: UserAuthRequest):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"注册失败: {str(e)}")
 
-# 3. 登录接口 (增强版)
+
+# 3. 登录接口
 @app.post("/api/login")
 def login(req: UserAuthRequest):
     try:
@@ -162,17 +174,19 @@ def login(req: UserAuthRequest):
             "data": {
                 "user_id": response.user.id,
                 "email": response.user.email,
-                "access_token": response.session.access_token 
+                "access_token": response.session.access_token
             }
         }
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="邮箱或密码错误，请检查后再试。")
+
 
 # 4. 个人资料接口
 @app.get("/api/user/profile/{user_id}")
 def get_profile(user_id: str):
     res = supabase.table("profiles").select("*").eq("id", user_id).single().execute()
     return res.data
+
 
 @app.put("/api/user/profile")
 def update_profile(req: ProfileUpdate):
@@ -182,14 +196,15 @@ def update_profile(req: ProfileUpdate):
             date.fromisoformat(update_data["birthday"])
         except ValueError:
             return {"status": "error", "message": "生日格式不正确，请使用 YYYY-MM-DD 格式"}
-    
+
     if not req.user_id:
         return {"status": "error", "message": "缺少用户ID"}
-        
+
     db_data = update_data.copy()
     db_data["id"] = db_data.pop("user_id")
     res = supabase.table("profiles").upsert(db_data).execute()
     return {"status": "success", "data": res.data}
+
 
 # ======= 博客问答页 API =======
 
@@ -201,11 +216,13 @@ def get_categories():
 
 @app.get("/api/forum/posts/{post_id}")
 def get_post_detail(post_id: str):
-    # 强行去掉可能存在的引号
     p_id = post_id.strip('"').strip("'")
-    post_res = supabase.table("forum_posts").select("*, profiles(username, avatar_url), forum_categories(name)").eq("id", p_id).single().execute()
-    answers_res = supabase.table("forum_answers").select("*, profiles(username, avatar_url)").eq("post_id", p_id).order("created_at", desc=False).execute()
+    post_res = supabase.table("forum_posts").select("*, profiles(username, avatar_url), forum_categories(name)").eq(
+        "id", p_id).single().execute()
+    answers_res = supabase.table("forum_answers").select("*, profiles(username, avatar_url)").eq("post_id", p_id).order(
+        "created_at", desc=False).execute()
     return {"post": post_res.data, "answers": answers_res.data}
+
 
 @app.post("/api/forum/answers")
 def create_answer(ans: AnswerCreate):
@@ -216,33 +233,30 @@ def create_answer(ans: AnswerCreate):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
 @app.get("/api/user/my-posts/{user_id}")
 def get_my_posts(user_id: str):
     res = supabase.table("forum_posts").select("*").eq("user_id", user_id).execute()
     return res.data
 
+
 @app.get("/api/forum/posts")
 def get_posts(sort: str = "latest", category_id: int = None, viewer_id: str = None):
-    # 1. 基础查询：拿到所有数据
     query = supabase.table("forum_posts").select(
         "*, profiles!user_id(username, avatar_url), forum_likes(count), forum_answers(count)"
     )
     if category_id:
         query = query.eq("category_id", category_id)
-        
+
     res = query.execute()
     all_data = res.data
 
-    # 2. 查询当前用户点赞过的 ID 列表
     liked_post_ids = []
-    # 增加对 "null" 和 "" 的判断，防止前端传参不规范
     if viewer_id and viewer_id not in ["undefined", "null", ""]:
         likes_res = supabase.table("forum_likes").select("post_id").eq("user_id", viewer_id).execute()
         liked_post_ids = [item['post_id'] for item in likes_res.data]
 
-    # 3. 根据 sort 类型，处理【排序】和【截断数量】
     if sort == "hot":
-        # 热榜：按点赞排，取 10 条
         for post in all_data:
             likes = post['forum_likes'][0]['count'] if post['forum_likes'] else 0
             answers = post['forum_answers'][0]['count'] if post['forum_answers'] else 0
@@ -250,40 +264,33 @@ def get_posts(sort: str = "latest", category_id: int = None, viewer_id: str = No
         processed_posts = sorted(all_data, key=lambda x: x.get('hot_score', 0), reverse=True)
         processed_posts = processed_posts[:10]
     elif sort == "random":
-        # 换一批：打乱，取 3 条
         random.shuffle(all_data)
         processed_posts = all_data[:3]
     else:
-        # 最新：按时间排，取 3 条
         processed_posts = sorted(all_data, key=lambda x: x['created_at'], reverse=True)
         processed_posts = processed_posts[:3]
 
-    # 4. 🚀 统一返回（这步最关键，必须把 posts 和 liked_post_ids 一起包起来）
     return {
         "posts": processed_posts,
         "liked_post_ids": liked_post_ids
     }
 
 
-# 2. 完善点赞接口 (如果之前没写或点不动)
 @app.post("/api/forum/like/toggle")
-def toggle_like(req: dict): # 简单的 dict 接收即可
+def toggle_like(req: dict):
     user_id = req.get("user_id")
     post_id = req.get("post_id")
-    
-    # 检查是否已点赞
+
     existing = supabase.table("forum_likes").select("*").eq("post_id", post_id).eq("user_id", user_id).execute()
-    
+
     if existing.data:
-        # 已有记录则删除 (取消点赞)
         supabase.table("forum_likes").delete().eq("post_id", post_id).eq("user_id", user_id).execute()
         return {"status": "unliked"}
     else:
-        # 没有则插入 (点赞)
         supabase.table("forum_likes").insert({"post_id": post_id, "user_id": user_id}).execute()
         return {"status": "liked"}
 
-# C. 个人空间：获取我的通知
+
 @app.get("/api/user/notifications/{user_id}")
 def get_notifications(user_id: str):
     res = supabase.table("notifications") \
@@ -294,11 +301,12 @@ def get_notifications(user_id: str):
         .execute()
     return res.data
 
-# 标记消息已读
+
 @app.put("/api/user/notifications/read/{user_id}")
 def mark_read(user_id: str):
     supabase.table("notifications").update({"is_read": True}).eq("receiver_id", user_id).execute()
     return {"status": "success"}
+
 
 # ======= 心理测评模块 API =======
 
@@ -307,18 +315,24 @@ def get_all_tests():
     res = supabase.table("tests").select("*").execute()
     return res.data
 
+
 @app.get("/api/tests/{test_id}/questions")
 def get_test_questions(test_id: str):
     res = supabase.table("test_questions").select("*").eq("test_id", test_id).order("sort_order").execute()
     return res.data
 
+
 @app.post("/api/tests/submit")
 def submit_test(req: TestSubmitRequest):
     total_score = sum([ans["score"] for ans in req.answers])
-    if total_score <= 4: level = "暂无明显焦虑"
-    elif total_score <= 9: level = "轻度焦虑"
-    elif total_score <= 14: level = "中度焦虑"
-    else: level = "重度焦虑"
+    if total_score <= 4:
+        level = "暂无明显焦虑"
+    elif total_score <= 9:
+        level = "轻度焦虑"
+    elif total_score <= 14:
+        level = "中度焦虑"
+    else:
+        level = "重度焦虑"
 
     radar_data = [
         {"name": "紧张不安", "value": total_score // 4 + 1},
@@ -336,7 +350,7 @@ def submit_test(req: TestSubmitRequest):
         "radar_data": radar_data
     }
     supabase.table("user_test_results").insert(result_data).execute()
-    
+
     return {
         "status": "success",
         "total_score": total_score,
@@ -346,10 +360,10 @@ def submit_test(req: TestSubmitRequest):
     }
 
 
-# 1. 获取用户的会话清单 (个人空间列表页用)
+# ======= 任务与打卡模块 (完全修复版) =======
+
 @app.get("/api/user/sessions/{user_id}")
 def get_user_sessions(user_id: str):
-    # 从 cbt_sessions 表里查，按时间倒序排列
     res = supabase.table("cbt_sessions") \
         .select("id, created_at, raw_event") \
         .eq("user_id", user_id) \
@@ -357,16 +371,179 @@ def get_user_sessions(user_id: str):
         .execute()
     return res.data
 
-# 2. 获取某个具体会话的聊天记录 (点击进入详情用)
+
 @app.get("/api/chat/history/{session_id}")
 def get_chat_history(session_id: str):
-    # 强行去掉可能的引号
     s_id = session_id.strip('"').strip("'")
-    
-    # 从 chat_messages 表里查出这一轮聊的所有话
     res = supabase.table("chat_messages") \
         .select("sender, content, created_at") \
         .eq("session_id", s_id) \
         .order("created_at", desc=False) \
         .execute()
     return res.data
+
+
+@app.get("/api/tasks/{user_id}")
+async def get_daily_tasks(user_id: str):
+    try:
+        today = str(date.today())
+
+        # 1. 查找今日已有任务
+        tasks_res = supabase.table("daily_tasks").select("*").eq("user_id", user_id).eq("task_date", today).execute()
+        existing_tasks = tasks_res.data
+
+        # 2. 核心修正：精准判断今天是否已有“行为激活”任务
+        has_ba_task = any(task.get("source") == "system_random" for task in existing_tasks)
+
+        # 只有在“今天还没有行为激活任务”的情况下，才去池子里抽取
+        if not has_ba_task:
+            pool_res = supabase.table("system_task_pool").select("*").execute()
+
+            if pool_res.data and len(pool_res.data) > 0:
+                random_item = random.choice(pool_res.data)
+
+                new_task = {
+                    "user_id": user_id,
+                    "task_content": random_item["content"],
+                    "task_date": today,
+                    "source": "system_random",
+                    "is_completed": False
+                }
+
+                # 写入数据库，锁定今天的任务
+                supabase.table("daily_tasks").insert(new_task).execute()
+
+                # 重新拉取一次，确保返回给前端的数据包含刚刚抽取的任务
+                tasks_res = supabase.table("daily_tasks").select("*").eq("user_id", user_id).eq("task_date",
+                                                                                                today).execute()
+                existing_tasks = tasks_res.data
+            else:
+                print("⚠️ 警告：system_task_pool 表是空的，无法抽取！")
+
+        # 3. 生成动态引导任务 (阳光储蓄罐 / Agent咨询室)
+        guide_tasks = []
+        checkin_res = supabase.table("daily_checkins").select("*").eq("user_id", user_id).eq("checkin_date",
+                                                                                             today).execute()
+
+        if checkin_res.data and len(checkin_res.data) > 0:
+            score = checkin_res.data[0]["emotion_score"]
+            if score >= 3:
+                sun_res = supabase.table("sunshine_records").select("*").eq("user_id", user_id).eq("record_date",
+                                                                                                   today).execute()
+                has_sunshine = len(sun_res.data) > 0
+                guide_tasks.append({
+                    "content": "✨ 在阳光储蓄罐记录一件今天发生的好事吧！",
+                    "completed": has_sunshine,
+                    "type": "sunshine"
+                })
+            else:
+                guide_tasks.append({
+                    "content": "🤖 检测到指挥官心情低落，建议体验一次 Agent 心理咨询",
+                    "completed": False,
+                    "type": "agent"
+                })
+
+        return {"tasks": existing_tasks, "guide_tasks": guide_tasks}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取任务列表失败: {str(e)}")
+
+
+@app.post("/api/checkin/emotion")
+async def submit_emotion(req: EmotionRequest):
+    # 彻底拦截异常请求
+    if req.user_id == "undefined" or not req.user_id:
+        raise HTTPException(status_code=400, detail="非法的用户ID")
+
+    today = str(date.today())
+
+    try:
+        # 🔍 1. 先查一下今天是不是已经有打卡记录了
+        existing = supabase.table("daily_checkins").select("*").eq("user_id", req.user_id).eq("checkin_date",
+                                                                                              today).execute()
+
+        if existing.data and len(existing.data) > 0:
+            # 💡 2. 如果今天已经打过卡（可能是之前测试留下的脏数据），我们就更新它的分数
+            row_id = existing.data[0]["id"]
+            supabase.table("daily_checkins").update({"emotion_score": req.emotion_score}).eq("id", row_id).execute()
+            print(f"✅ 更新了今日已有的打卡分数: {req.emotion_score}")
+        else:
+            # 💡 3. 如果今天是干干净净的第一次打卡，正常插入
+            checkin_data = {"user_id": req.user_id, "checkin_date": today, "emotion_score": req.emotion_score}
+            supabase.table("daily_checkins").insert(checkin_data).execute()
+            print(f"✅ 新增了今日打卡分数: {req.emotion_score}")
+
+        # 4. 判断分支，给前端返回对应动作（由前端触发 fetchTasks 去获取最新任务）
+        if req.emotion_score >= 3:
+            return {"status": "success", "action": "show_sunshine"}
+        else:
+            return {"status": "success", "action": "show_agent"}
+
+    except Exception as e:
+        print(f"❌ 情绪打卡接口报错: {e}")  # 打印到终端方便排错
+        raise HTTPException(status_code=500, detail=f"数据库同步失败: {str(e)}")
+
+
+@app.post("/api/checkin/sunshine")
+async def submit_sunshine(req: SunshineRequest):
+    today = str(date.today())
+    try:
+        supabase.table("sunshine_records").insert(
+            {"user_id": req.user_id, "record_date": today, "content": req.content}).execute()
+        # 同样，不需要在这里修改 daily_tasks 表，get_daily_tasks 接口会自动判断它完成了没
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"存储失败: {str(e)}")
+
+# 行为激活任务的 打钩/取消打钩 接口
+@app.post("/api/tasks/toggle")
+async def toggle_task(req: TaskToggleRequest):
+    try:
+        # 去数据库里把对应的任务状态改成前端传过来的新状态（True 或 False）
+        supabase.table("daily_tasks").update({"is_completed": req.is_completed}).eq("id", req.task_id).execute()
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"更新任务状态失败: {str(e)}")
+
+#  Agent 联动所需的数据模型与接口
+class AgentCompleteRequest(BaseModel):
+    user_id: str
+
+
+class AgentTaskRequest(BaseModel):
+    user_id: str
+    task_content: str
+
+
+@app.post("/api/agent/complete")
+async def agent_mark_complete(req: AgentCompleteRequest):
+    """当用户完成 Stage 5 时，前端调用此接口，将引导任务打钩"""
+    today = str(date.today())
+    try:
+        supabase.table("daily_checkins").update({
+            "agent_completed": True
+        }).eq("user_id", req.user_id).eq("checkin_date", today).execute()
+
+        supabase.table("daily_tasks").update({
+            "is_completed": True
+        }).eq("user_id", req.user_id).eq("task_date", today).eq("source", "system_generated").execute()
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"标记完成失败: {str(e)}")
+
+@app.post("/api/agent/custom_task")
+async def agent_assign_task(req: AgentTaskRequest):
+    """前端从 Stage 5 提取出专属任务后，调用此接口存入今日任务列表"""
+    today = str(date.today())
+    try:
+        new_task = {
+            "user_id": req.user_id,
+            "task_date": today,
+            "task_content": req.task_content,
+            "source": "agent_custom",
+            "is_completed": False
+        }
+        supabase.table("daily_tasks").insert(new_task).execute()
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"插入专属任务失败: {str(e)}")
