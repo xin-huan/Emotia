@@ -10,6 +10,7 @@ import asyncio
 import random
 import math
 from pydantic import BaseModel
+from app import scoring_engine 
 
 # 导入你的包装器和数据库
 from agent.core import process_cbt_chat
@@ -83,6 +84,34 @@ class SunshineRequest(BaseModel):
 class TaskToggleRequest(BaseModel):
     task_id: str
     is_completed: bool
+# ======= AI调用 =======
+async def generate_ai_report(title: str, score: int, radar_data: list, interpretation: str):
+    # 🚀 改进提示词：明确要求输出 结论 和 解析
+    prompt = f"""你是一位资深的心理咨询师。用户完成了《{title}》测评。
+    总分：{score}。维度分：{radar_data}。
+    标准：{interpretation}
+    
+    请严格按照以下格式输出（不要有任何其他文字）：
+    结论：[此处只写4-10个字的心理类型结论]
+    解析：[此处写一段专业且温暖的详细分析，包含生活建议，250字左右]
+    """
+    try:
+        from agent.agent import llm
+        response = await llm.ainvoke(prompt)
+        content = response.content
+        
+        # 简单解析：根据“解析：”这个词把文字切成两半
+        if "解析：" in content:
+            level_part = content.split("解析：")[0].replace("结论：", "").strip()
+            analysis_part = content.split("解析：")[1].strip()
+        else:
+            level_part = "分析完成"
+            analysis_part = content
+            
+        return level_part, analysis_part
+    except:
+        return "分析完成", "测评已完成，建议结合右侧维度图进行自我观察。"
+
 # ======= 核心业务接口 =======
 
 @app.get("/")
@@ -325,80 +354,133 @@ class TestSubmitRequest(BaseModel):
 # A. 获取所有测评量表列表 (展示卡片用)
 @app.get("/api/tests")
 def get_all_tests():
-    res = supabase.table("tests").select("*").order("id").execute()
+    # 增加 select 字段，确保前端能拿到缩写和分类
+    res = supabase.table("tests").select("id, title, abbreviation, description, icon, tags").order("id").execute()
     return res.data
 
 # B. 获取对应测试的题目和选项 (答题页用)
 @app.get("/api/tests/{test_id}/questions")
 def get_test_questions(test_id: int):
+    # 🚀 必须查出 scale_name，前端可能需要显示，后端计分也需要
     res = supabase.table("test_questions") \
-        .select("id, question_text, options") \
+        .select("id, question_text, options, scale_name") \
         .eq("test_id", test_id) \
         .order("sort_order", desc=False) \
         .execute()
     return res.data
 
+
 # C. 核心：提交测评、自动计算分值并存库
 @app.post("/api/tests/submit")
-def submit_test(req: TestSubmitRequest):
+async def submit_test(req: TestSubmitRequest):
     try:
-        # 1. 从数据库获取该测试的权威计分标准
-        test_info = supabase.table("tests") \
-            .select("scoring_formula, result_brackets") \
-            .eq("id", req.test_id) \
-            .single().execute()
-        
+        # 1. 获取元数据
+        test_info = supabase.table("tests").select("metadata, abbreviation").eq("id", req.test_id).single().execute()
         if not test_info.data:
-            raise HTTPException(status_code=404, detail="未找到该测试的计分规则")
+            raise HTTPException(status_code=404, detail="未找到量表配置")
+            
+        this_scale = test_info.data['metadata']
+        abbr = test_info.data['abbreviation']
 
-        formula = test_info.data.get("scoring_formula")
-        brackets = test_info.data.get("result_brackets")
-
-        # 2. 计算原始总分 (Raw Score)
-        raw_score = sum([ans.score for ans in req.answers])
+        # 2. 准备题目映射
+        questions_res = supabase.table("test_questions") \
+            .select("id, sort_order, options") \
+            .eq("test_id", req.test_id) \
+            .execute()
         
-        # 3. 执行公式换算 (例如 SDS 的 x * 1.25)
-        final_score = raw_score
-        if formula == 'x * 1.25':
-            final_score = math.floor(raw_score * 1.25) # 官方标准通常要求取整
-        # 如果有其他公式可以在此扩展 elif...
+        order_to_choice_map = {}
+        id_to_order = {}
+        # 为了防止 KeyError，记录一下本套题所有的合法题号
+        all_q_orders = [] 
 
-        # 4. 自动匹配等级 (根据 result_brackets 配置)
-        matching_level = "无法评估"
-        if brackets:
-            # brackets 格式示例: [{"min": 53, "max": 62, "level": "轻度"}]
-            for bracket in brackets:
-                if bracket["min"] <= final_score <= bracket["max"]:
-                    matching_level = bracket["level"]
-                    break
+        for q in questions_res.data:
+            q_order_str = str(q['sort_order'])
+            all_q_orders.append(q_order_str)
+            id_to_order[str(q['id'])] = q_order_str
+            order_to_choice_map[q_order_str] = {
+                i: chr(65 + i) for i in range(len(q['options'])) 
+            }
 
-        # 5. 结果持久化到数据库
-        insert_res = supabase.table("user_test_results").insert({
+        # 3. 翻译答案
+        script_answers = {}
+        # 🚀 预填充兜底：如果用户没答，默认选 A (防止脚本报错)
+        for order in all_q_orders:
+            script_answers[order] = "A"
+
+        for ans in req.answers:
+            q_order = id_to_order.get(str(ans.question_id))
+            if q_order:
+                choice_letter = order_to_choice_map[q_order].get(int(ans.score), "A")
+                script_answers[q_order] = choice_letter
+
+
+        # 4. 动态调用脚本
+        scoring_func_name = f"scoring_{abbr}"
+        scoring_func = getattr(scoring_engine, scoring_func_name, scoring_engine.scoring_the_scale)
+        result_from_script = scoring_func(this_scale, script_answers)
+
+
+        if not result_from_script or 'items_scores' not in result_from_script:
+            raise ValueError("计分脚本未能生成结果")
+
+        # 5. 提取并计算数据
+        items_scores = result_from_script.get('items_scores', {})
+        total_score = sum(items_scores.values())
+        scales_scores = result_from_script.get('scales_scores', {})
+
+        # 6. 构造雷达图数据 (计算维度均分，防止数值过大)
+        radar_data = []
+        scales_items = this_scale["contents"].get("scales_items", {})
+        
+        for name, score_val in scales_scores.items():
+            # 获取该维度题目数量以计算均分
+            q_count = len(scales_items.get(name, [1])) 
+            avg_val = round(score_val / q_count, 2)
+            radar_data.append({"name": name, "value": avg_val})
+
+        # 获取元数据及说明
+        test_info = supabase.table("tests").select("title, metadata").eq("id", req.test_id).single().execute()
+        raw_interpretation = test_info.data['metadata'].get("interpretation", "分析完成")
+
+        # 🚀 核心修改：接收拆分后的结论和解析
+        short_level, full_analysis = await generate_ai_report(
+            test_info.data['title'], 
+            int(total_score), 
+            radar_data, 
+            raw_interpretation
+        )
+
+        # 存库：result_level 存短的，我们再加个字段存详细的，或者拼在一起
+        # 这里建议 result_level 存短的结论
+        supabase.table("user_test_results").insert({
             "user_id": req.user_id,
             "test_id": req.test_id,
-            "total_score": final_score,
-            "result_level": matching_level
+            "total_score": int(total_score),
+            "result_level": short_level,      # 👈 存入短结论：如“轻度经验回避倾向”
+            "dimension_scores": radar_data,
+            "analysis_text": full_analysis    # 👈 如果你数据库加了这一列就存进去，没加就先不存
         }).execute()
 
-        # 6. 返回给前端（包含计算后的分数和等级）
         return {
             "status": "success",
             "data": {
-                "score": final_score,
-                "level": matching_level,
-                "record_id": insert_res.data[0]['id'] if insert_res.data else None
+                "score": int(total_score),
+                "level": short_level,         # 👈 返回短结论
+                "professional_analysis": full_analysis, # 👈 返回长解析
+                "radar_data": radar_data
             }
         }
 
     except Exception as e:
-        print(f"❌ 测评提交失败: {str(e)}")
+        import traceback
+        traceback.print_exc() 
         raise HTTPException(status_code=400, detail=str(e))
 
 # D. 获取用户的测评历史记录 (个人空间图表用)
 @app.get("/api/user/test-history/{user_id}")
 def get_test_history(user_id: str):
     res = supabase.table("user_test_results") \
-        .select("created_at, total_score, result_level, tests(title)") \
+        .select("created_at, total_score, result_level, dimension_scores, tests(title)") \
         .eq("user_id", user_id) \
         .order("created_at", desc=True) \
         .execute()
