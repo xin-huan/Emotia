@@ -176,7 +176,7 @@ def main():
         # 💾 保存最佳模型
         if val_mae < best_val_mae:
             best_val_mae = val_mae
-            output_dir = "./roberta_cbt_scorer_best"
+            output_dir = "../roberta_cbt_scorer_best"
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
 

@@ -19,7 +19,7 @@ export default function AgentTest() {
   // session_id 依然可以保持在当前页面生命周期内唯一，或者每开一个新话题生成一个
   const [sessionId, setSessionId] = useState(crypto.randomUUID());
 
-// A. 获取该用户的所有会话列表
+  // A. 获取该用户的所有会话列表
   const fetchMySessions = async () => {
     if (!userId) {
       setStatusText("请先登录再查看历史");
@@ -36,35 +36,32 @@ export default function AgentTest() {
   };
 
   // B. 加载某个特定会话的具体对话内容
-const loadHistoryDetail = async (sid) => {
-  // 🚀 第一行打印：确认鼠标点下去了，函数跑起来了
-  console.log("🔥 成功触发点击事件！准备加载会话，ID为:", sid); 
+  const loadHistoryDetail = async (sid) => {
+    console.log("🔥 成功触发点击事件！准备加载会话，ID为:", sid);
 
-  try {
-    const res = await fetch(`http://127.0.0.1:8000/api/chat/history/${sid}`);
-    const data = await res.json();
-    
-    // 🚀 第二行打印：确认后端吐出了什么东西
-    console.log("📦 后端返回的原始包裹:", data); 
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/chat/history/${sid}`);
+      const data = await res.json();
 
-    if (data && data.length > 0) {
-      const formattedHistory = data.map(m => ({
-        role: m.sender === 'user' ? 'user' : 'agent',
-        content: m.content
-      }));
-      setChatHistory(formattedHistory);
-      // 🚀 第三行打印：确认状态更新了
-      console.log("✅ 状态已更新，聊天框应该变了！");
-    } else {
-      console.warn("⚠️ 注意：后端返回了一个空数组 []，说明这张表里没存下对话文字。");
-      setStatusText("该记录没有对话详情");
+      console.log("📦 后端返回的原始包裹:", data);
+
+      if (data && data.length > 0) {
+        const formattedHistory = data.map(m => ({
+          role: m.sender === 'user' ? 'user' : 'agent',
+          content: m.content
+        }));
+        setChatHistory(formattedHistory);
+        console.log("✅ 状态已更新，聊天框应该变了！");
+      } else {
+        console.warn("⚠️ 注意：后端返回了一个空数组 []，说明这张表里没存下对话文字。");
+        setStatusText("该记录没有对话详情");
+      }
+    } catch (err) {
+      console.error("❌ 网络请求崩了:", err);
     }
-  } catch (err) {
-    console.error("❌ 网络请求崩了:", err);
-  }
-};
+  };
 
-// 发送消息与接收 SSE 流的核心函数
+  // 发送消息与接收 SSE 流的核心函数
   const sendMessage = async () => {
     if (!inputText.trim()) return;
 
@@ -76,8 +73,7 @@ const loadHistoryDetail = async (sid) => {
     setStatusText("正在连接大模型...");
 
     // 🚀 核心逻辑：定义一个内部局部变量，用来实时积累 AI 说的每一个字
-    // 这样即便 React 状态更新慢，我们也能拿到完整的回复
-    let accumulatedReply = ""; 
+    let accumulatedReply = "";
 
     try {
       // 2. 发起 POST 请求
@@ -102,7 +98,7 @@ const loadHistoryDetail = async (sid) => {
 
         buffer += decoder.decode(value, { stream: true });
         let parts = buffer.split('\n\n');
-        buffer = parts.pop(); 
+        buffer = parts.pop();
 
         for (let part of parts) {
           if (part.startsWith('data: ')) {
@@ -110,23 +106,47 @@ const loadHistoryDetail = async (sid) => {
             try {
               const data = JSON.parse(jsonStr);
 
-              // ✅ 功能 A：更新状态（阶段）
               if (data.type === 'status') {
                 setStatusText(data.content);
               }
-              // ✅ 功能 B：更新情绪分数和证据泡泡 (你最担心的打分就在这！)
               else if (data.type === 'data_update') {
-                setEmotionTags(data.emotion_tags); // 这里更新右侧标签
-                setEvidences(data.evidences);      // 这里更新右侧泡泡
+                setEmotionTags(data.emotion_tags);
+                setEvidences(data.evidences);
               }
-              // ✅ 功能 C：打字机文字显示
               else if (data.type === 'text_chunk') {
                 const chunk = data.content;
-                accumulatedReply += chunk; // 存入局部变量
-                setCurrentAgentReply(prev => prev + chunk); // 更新界面显示
+                accumulatedReply += chunk;
+                setCurrentAgentReply(prev => prev + chunk);
               }
               else if (data.type === 'done') {
                 setStatusText("回复完毕");
+
+                // ==================================================
+                // 🚀 [新增逻辑]：流式接收完毕，检查是否含有【专属任务】
+                // ==================================================
+                const taskMatch = accumulatedReply.match(/【专属任务：(.*?)】/);
+
+                if (taskMatch && taskMatch[1]) {
+                  const customTaskStr = taskMatch[1];
+                  console.log("🎯 成功捕获 Agent 专属任务:", customTaskStr);
+
+                  // A. 将该任务下发到用户的今日打卡列表
+                  fetch("http://127.0.0.1:8000/api/agent/custom_task", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      user_id: userId,
+                      task_content: customTaskStr
+                    })
+                  }).catch(e => console.error("下发专属任务失败", e));
+
+                  // B. 同时把每日任务面板里的“体验咨询室”黄框任务打钩
+                  fetch("http://127.0.0.1:8000/api/agent/complete", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ user_id: userId })
+                  }).catch(e => console.error("打钩引导任务失败", e));
+                }
               }
             } catch (e) {
               console.error("JSON解析出错", jsonStr, e);
@@ -135,17 +155,18 @@ const loadHistoryDetail = async (sid) => {
         }
       }
 
-      // 🚀 4. 对话彻底结束后：把刚才累积的“打字机文字”转正到“正式历史记录”中
-      // 只有执行了这一步，AI 的话才会像用户的话一样永远留在屏幕上
+      // 4. 对话彻底结束后：把刚才累积的“打字机文字”转正到“正式历史记录”中
       if (accumulatedReply) {
-        setChatHistory(prev => [...prev, { 
-          role: 'agent', 
-          content: accumulatedReply 
+        // [优化]：在正式上屏前，我们可以把【专属任务：xxx】的字样从气泡中隐去或美化，
+        // 防止用户觉得突兀，但目前先原样显示。
+        setChatHistory(prev => [...prev, {
+          role: 'agent',
+          content: accumulatedReply
         }]);
       }
 
       // 5. 转正完成后，把临时的打字机状态清空，迎接下一轮
-      setCurrentAgentReply(""); 
+      setCurrentAgentReply("");
 
     } catch (error) {
       setStatusText("连接失败，请检查后端是否在 8000 端口运行");
@@ -220,16 +241,16 @@ const loadHistoryDetail = async (sid) => {
           ))}
           {evidences.length === 0 && <span style={{fontSize: '12px', color: '#999'}}>暂无提取的证据</span>}
         </div>
-      </div>
-{/* --- 简易历史回溯面板 --- */}
+
+        {/* --- 简易历史回溯面板 --- */}
         <h4 style={{ marginTop: '30px', color: '#666' }}>🕒 往期疗愈档案</h4>
         <button onClick={fetchMySessions} style={{ fontSize: '12px', marginBottom: '10px' }}>
           刷新列表
         </button>
         <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
           {sessionList.map((s, idx) => (
-            <div 
-              key={idx} 
+            <div
+              key={idx}
               onClick={() => loadHistoryDetail(s.id)}
               style={{
                 padding: '8px',
@@ -246,6 +267,7 @@ const loadHistoryDetail = async (sid) => {
           ))}
           {sessionList.length === 0 && <div style={{color:'#999', fontSize:'11px'}}>暂无记录</div>}
         </div>
+      </div>
     </div>
   );
 }

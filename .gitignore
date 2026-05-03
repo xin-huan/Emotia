@@ -27,7 +27,7 @@ dist-ssr
 backend/.env
 
 # 忽略模型权重文件夹 (非常大，绝对不能传)
-roberta_cbt_scorer_best/
+backend/roberta_cbt_scorer_best/
 backend/roberta_cbt_scorer_best/
 
 # 忽略 Python 缓存

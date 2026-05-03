@@ -7,6 +7,8 @@ import AuthModal from './components/AuthModal';
 import Interactive from './pages/Interactive';
 import Agent from './pages/AgentTest';
 import Test from './pages/Test';
+import CheckInTest from './pages/CheckInTest';
+
 function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [user, setUser] = useState(null);
@@ -47,6 +49,7 @@ function App() {
         <Route path="/interactive" element={<Interactive />} />
         <Route path="/agent" element={<Agent />} />
         <Route path="/Test" element={<Test />} />
+        <Route path="/checkin" element={<CheckInTest />} />
       </Routes>
 
       <AuthModal

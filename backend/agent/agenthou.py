@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import json
 import time
 import asyncio
@@ -9,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from typing import Annotated, List, Dict, Any
 from typing_extensions import TypedDict
+from datetime import date
 
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
@@ -50,7 +52,11 @@ except Exception as e:
     print(f"⚠️ 向量化模型加载失败: {e}")
     embeddings = None
 
-MODEL_DIR = "./roberta_cbt_scorer_best"
+CURRENT_FILE_DIR = os.path.dirname(os.path.abspath(__file__))
+BACKEND_DIR = os.path.dirname(CURRENT_FILE_DIR)
+MODEL_DIR = os.path.join(BACKEND_DIR, "roberta_cbt_scorer_best")
+print(f"🚀 正在加载模型，绝对路径已自动定位至: {MODEL_DIR}")
+
 TARGET_COLS = ["焦虑", "悲伤", "生气", "羞愧", "无助", "平静", "轻松"]
 NEGATIVE_EMOTIONS = ["焦虑", "悲伤", "生气", "羞愧", "无助"]
 
@@ -332,7 +338,10 @@ def node_cognitive_reframing(state: CBTState):
 
 def node_rebuild_conclusion(state: CBTState):
     print("\n[Node 5] 正在处理: 总结收尾...")
-    sys_msg = SystemMessage(content="任务：CBT流程已走完，结合用户打破的证据，进行最终的心理建设和赋能，结束对话。")
+    sys_msg = SystemMessage(content="任务：CBT流程已走完，结合用户打破的证据，进行最终的心理建设和赋能，结束对话。"
+                                    "【强制要求】：请在回复的最后，根据用户的具体困境，为他量身定制一个简单、极易执行的“行为激活任务”（例如：喝一杯温水、看窗外发呆3分钟、深呼吸5次等）。"
+                                    "请务必使用以下格式包裹这个任务，以便系统提取，格式为：【专属任务：你的任务内容】"
+                            )
     response = llm.invoke([sys_msg] + state["messages"][-2:])
     return {"messages": [response]}
 
@@ -630,6 +639,63 @@ async def chat_stream_endpoint(req: ChatRequest):
     # 必须返回 text/event-stream 媒体类型
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
+
+# ==========================================
+# [新增] Agent 联动接口所需的数据模型
+# ==========================================
+class AgentCompleteRequest(BaseModel):
+    user_id: str
+
+
+class AgentTaskRequest(BaseModel):
+    user_id: str
+    task_content: str
+
+# [新增] 接口 1: 标记 Agent 体验完成
+@api_app.post("/api/agent/complete")
+async def agent_mark_complete(req: AgentCompleteRequest):
+    """当用户完成 Stage 5 时，前端调用此接口，将引导任务打钩"""
+    if not supabase:
+        return {"status": "error", "message": "Supabase 未连接"}
+
+    today = str(date.today())
+    try:
+        # 1. 更新今日打卡表，标记已完成 Agent 咨询
+        supabase.table("daily_checkins").update({
+            "agent_completed": True
+        }).eq("user_id", req.user_id).eq("checkin_date", today).execute()
+
+        # 2. 顺手把【每日日常任务】里的那条 "体验一次 Agent 咨询室" 打上绿钩！
+        supabase.table("daily_tasks").update({
+            "is_completed": True
+        }).eq("user_id", req.user_id).eq("task_date", today).eq("source", "system_generated").execute()
+
+        return {"status": "success"}
+    except Exception as e:
+        print(f"⚠️ 标记完成失败: {e}")
+        return {"status": "error", "message": str(e)}
+
+# 接口 2: 下发 Agent 专属定制任务
+@api_app.post("/api/agent/custom_task")
+async def agent_assign_task(req: AgentTaskRequest):
+    """前端从 Stage 5 提取出【专属任务：xxx】后，调用此接口存入今日任务列表"""
+    if not supabase:
+        return {"status": "error", "message": "Supabase 未连接"}
+
+    today = str(date.today())
+    try:
+        new_task = {
+            "user_id": req.user_id,
+            "task_date": today,
+            "task_content": req.task_content,
+            "source": "agent_custom",  # 对应数据库中的 agent_custom 标识
+            "is_completed": False
+        }
+        supabase.table("daily_tasks").insert(new_task).execute()
+        return {"status": "success"}
+    except Exception as e:
+        print(f"⚠️ 插入专属任务失败: {e}")
+        return {"status": "error", "message": str(e)}
 
 if __name__ == "__main__":
     print("\n🚀 CBT Agent SSE Web Server 正在启动...")
