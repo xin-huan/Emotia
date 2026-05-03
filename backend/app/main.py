@@ -9,6 +9,8 @@ import os
 import json
 import asyncio
 import random
+import math
+from pydantic import BaseModel
 
 # 导入你的包装器和数据库
 from agent.core import process_cbt_chat
@@ -300,50 +302,101 @@ def mark_read(user_id: str):
     supabase.table("notifications").update({"is_read": True}).eq("receiver_id", user_id).execute()
     return {"status": "success"}
 
-# ======= 心理测评模块 API =======
+# --- 1. 数据模型定义 ---
 
+class TestAnswer(BaseModel):
+    question_id: str
+    score: int
+
+class TestSubmitRequest(BaseModel):
+    user_id: str
+    test_id: int
+    answers: List[TestAnswer] # 接收每一题的答案列表
+
+# --- 2. 接口实现 ---
+
+# A. 获取所有测评量表列表 (展示卡片用)
 @app.get("/api/tests")
 def get_all_tests():
-    res = supabase.table("tests").select("*").execute()
+    res = supabase.table("tests").select("*").order("id").execute()
     return res.data
 
+# B. 获取对应测试的题目和选项 (答题页用)
 @app.get("/api/tests/{test_id}/questions")
-def get_test_questions(test_id: str):
-    res = supabase.table("test_questions").select("*").eq("test_id", test_id).order("sort_order").execute()
+def get_test_questions(test_id: int):
+    res = supabase.table("test_questions") \
+        .select("id, question_text, options") \
+        .eq("test_id", test_id) \
+        .order("sort_order", desc=False) \
+        .execute()
     return res.data
 
+# C. 核心：提交测评、自动计算分值并存库
 @app.post("/api/tests/submit")
 def submit_test(req: TestSubmitRequest):
-    total_score = sum([ans["score"] for ans in req.answers])
-    if total_score <= 4: level = "暂无明显焦虑"
-    elif total_score <= 9: level = "轻度焦虑"
-    elif total_score <= 14: level = "中度焦虑"
-    else: level = "重度焦虑"
+    try:
+        # 1. 从数据库获取该测试的权威计分标准
+        test_info = supabase.table("tests") \
+            .select("scoring_formula, result_brackets") \
+            .eq("id", req.test_id) \
+            .single().execute()
+        
+        if not test_info.data:
+            raise HTTPException(status_code=404, detail="未找到该测试的计分规则")
 
-    radar_data = [
-        {"name": "紧张不安", "value": total_score // 4 + 1},
-        {"name": "无法控制担忧", "value": total_score // 5 + 2},
-        {"name": "过度担心", "value": total_score // 6 + 1},
-        {"name": "很难放松", "value": 3},
-        {"name": "容易烦躁", "value": 2}
-    ]
+        formula = test_info.data.get("scoring_formula")
+        brackets = test_info.data.get("result_brackets")
 
-    result_data = {
-        "user_id": req.user_id,
-        "test_id": req.test_id,
-        "total_score": total_score,
-        "result_level": level,
-        "radar_data": radar_data
-    }
-    supabase.table("user_test_results").insert(result_data).execute()
-    
-    return {
-        "status": "success",
-        "total_score": total_score,
-        "result_level": level,
-        "radar_data": radar_data,
-        "suggestion": f"根据您的得分，您的焦虑水平处于 {level} 状态。建议尝试我们的 CBT Agent 模块进行调节。"
-    }
+        # 2. 计算原始总分 (Raw Score)
+        raw_score = sum([ans.score for ans in req.answers])
+        
+        # 3. 执行公式换算 (例如 SDS 的 x * 1.25)
+        final_score = raw_score
+        if formula == 'x * 1.25':
+            final_score = math.floor(raw_score * 1.25) # 官方标准通常要求取整
+        # 如果有其他公式可以在此扩展 elif...
+
+        # 4. 自动匹配等级 (根据 result_brackets 配置)
+        matching_level = "无法评估"
+        if brackets:
+            # brackets 格式示例: [{"min": 53, "max": 62, "level": "轻度"}]
+            for bracket in brackets:
+                if bracket["min"] <= final_score <= bracket["max"]:
+                    matching_level = bracket["level"]
+                    break
+
+        # 5. 结果持久化到数据库
+        insert_res = supabase.table("user_test_results").insert({
+            "user_id": req.user_id,
+            "test_id": req.test_id,
+            "total_score": final_score,
+            "result_level": matching_level
+        }).execute()
+
+        # 6. 返回给前端（包含计算后的分数和等级）
+        return {
+            "status": "success",
+            "data": {
+                "score": final_score,
+                "level": matching_level,
+                "record_id": insert_res.data[0]['id'] if insert_res.data else None
+            }
+        }
+
+    except Exception as e:
+        print(f"❌ 测评提交失败: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+# D. 获取用户的测评历史记录 (个人空间图表用)
+@app.get("/api/user/test-history/{user_id}")
+def get_test_history(user_id: str):
+    res = supabase.table("user_test_results") \
+        .select("created_at, total_score, result_level, tests(title)") \
+        .eq("user_id", user_id) \
+        .order("created_at", desc=True) \
+        .execute()
+    return res.data
+
 
 
 # 1. 获取用户的会话清单 (个人空间列表页用)
