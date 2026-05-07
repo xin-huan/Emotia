@@ -264,6 +264,19 @@ def create_answer(ans: AnswerCreate):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@app.post("/api/forum/posts")
+def create_post(post: PostCreate):
+    try:
+        # 防御 undefined 字符串
+        if post.user_id == "undefined" or not post.user_id:
+            raise HTTPException(status_code=401, detail="未登录或用户身份无效")
+            
+        data = post.dict()
+        res = supabase.table("forum_posts").insert(data).execute()
+        return {"status": "success", "data": res.data}
+    except Exception as e:
+        print(f"❌ 发布失败详情: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.get("/api/user/my-posts/{user_id}")
 def get_my_posts(user_id: str):
