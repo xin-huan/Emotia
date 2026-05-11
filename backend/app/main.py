@@ -761,19 +761,3 @@ async def agent_assign_task(req: AgentTaskRequest):
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"插入专属任务失败: {str(e)}")
-    
-
-#任务系统接口
-@app.post("/api/agent/complete")
-async def agent_mark_complete(req: AgentCompleteRequest):
-    today = str(date.today())
-    supabase.table("daily_checkins").update({"agent_completed": True}).eq("user_id", req.user_id).eq("checkin_date", today).execute()
-    supabase.table("daily_tasks").update({"is_completed": True}).eq("user_id", req.user_id).eq("task_date", today).eq("source", "system_generated").execute()
-    return {"status": "success"}
-
-@app.post("/api/agent/custom_task")
-async def agent_assign_task(req: AgentTaskRequest):
-    today = str(date.today())
-    new_task = {"user_id": req.user_id, "task_date": today, "task_content": req.task_content, "source": "agent_custom", "is_completed": False}
-    supabase.table("daily_tasks").insert(new_task).execute()
-    return {"status": "success"}
