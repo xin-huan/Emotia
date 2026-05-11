@@ -41,15 +41,19 @@ def process_cbt_chat(session_id: str, user_id: str, message: str) -> dict:
     session_store[session_id] = result_state
     
     # 5. 格式化输出给前端
-    agent_reply = result_state["messages"][-1].content
-    # 提取情绪标签的 key 变成列表
-    emotions = list(result_state.get("emotion_tags", {}).keys())
+    agent_reply = ""
+    for msg in reversed(result_state["messages"]):
+        if msg.type == "ai" and msg.content:
+            agent_reply = msg.content
+            break
+    emotions = result_state.get("emotion_tags", {})
+    print(f"✅ [Core提取] 情绪数据: {emotions}")
     
+    # 🚀 3. 提取情绪字典和证据列表
+    # 确保变量名 full_emotions 和 evidences 与你 main.py 里的 get() 一致
     return {
-        "reply": agent_reply,
-        # 传递完整的情绪字典 {"无助": 67.5, ...}
-        "full_emotions": result_state.get("emotion_tags", {}), 
-        # 传递证据列表
+        "reply": agent_reply.replace("**", ""), # 顺手去掉组员加的加粗符号
+        "full_emotions": emotions, 
         "evidences": result_state.get("evidences", []),
         "cbt_stage": result_state.get("current_stage", "stage_1")
     }
