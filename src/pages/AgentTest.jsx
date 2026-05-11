@@ -37,27 +37,34 @@ export default function AgentTest() {
 
   // B. 加载某个特定会话的具体对话内容
   const loadHistoryDetail = async (sid) => {
-    console.log("🔥 成功触发点击事件！准备加载会话，ID为:", sid);
-
+    setStatusText(`正在还原会话: ${sid}...`);
     try {
       const res = await fetch(`http://127.0.0.1:8000/api/chat/history/${sid}`);
       const data = await res.json();
-
-      console.log("📦 后端返回的原始包裹:", data);
-
-      if (data && data.length > 0) {
-        const formattedHistory = data.map(m => ({
-          role: m.sender === 'user' ? 'user' : 'agent',
-          content: m.content
-        }));
-        setChatHistory(formattedHistory);
-        console.log("✅ 状态已更新，聊天框应该变了！");
-      } else {
-        console.warn("⚠️ 注意：后端返回了一个空数组 []，说明这张表里没存下对话文字。");
-        setStatusText("该记录没有对话详情");
+      
+      // 1. 🚀 还原左侧聊天文字
+      const formattedMessages = data.messages.map(m => ({
+        role: m.sender === 'user' ? 'user' : 'agent',
+        content: m.content
+      }));
+      setChatHistory(formattedMessages);
+      
+      // 2. 🚀 [最关键] 还原右侧白盒监控数据
+      if (data.metadata) {
+        // 还原情绪标签和分数
+        setEmotionTags(data.metadata.emotion_labels || {});
+        // 还原证据泡泡
+        setEvidences(data.metadata.evidence_list || []);
+        // 还原当前阶段状态
+        setStatusText(`历史记录加载成功 (当前阶段: ${data.metadata.current_stage})`);
       }
+
+      // 3. 同时也更新当前的 sessionId，保证接下来的对话能接在后面
+      setSessionId(sid);
+
     } catch (err) {
-      console.error("❌ 网络请求崩了:", err);
+      console.error("还原失败", err);
+      setStatusText("记录还原失败");
     }
   };
 

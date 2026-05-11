@@ -282,7 +282,8 @@ def node_analyze_reaction(state: CBTState):
                 f"警告：绝对不要修改上述 JSON 的内容！无论如何，你【绝对不可】在给用户的回复中暴露任何后台机制！- 严禁说出“我已经记录下你的情绪状态”。- 严禁出现任何具体的“分数”、“百分比”（如 55.3%）。- 严禁提及“后台”、“ML情绪雷达”、“系统”等机械化词汇。你是一个有血有肉的人类咨询师，绝不能让用户发现你在看数据仪表盘！")
     context = get_safe_history(state["messages"], k=3)
     response = llm_with_tools.invoke([sys_msg] + context)
-    return {"messages": [response]}
+    return {"messages": [response],"emotion_tags": extracted_tags, # 👈 强制更新状态
+        "mood_history": [extracted_tags]}
 
 
 def node_gather_evidence(state: CBTState):
@@ -313,6 +314,8 @@ def node_gather_evidence(state: CBTState):
 def node_cognitive_reframing(state: CBTState):
     print("\n[Node 4] 正在处理: 认知重构...")
     last_msg = state["messages"][-1]
+    # 🚀 初始化 live_scores 为当前状态的分数，防止报错
+    live_scores = state.get("emotion_tags", {})
     user_last_reply = ""
     if last_msg.type == "human":
         live_scores = predict_emotions(last_msg.content)
@@ -333,7 +336,9 @@ def node_cognitive_reframing(state: CBTState):
     )
     context = get_safe_history(state["messages"], k=5)
     response = llm_with_tools.invoke([sys_msg] + context)
-    return {"messages": [response]}
+    return {"messages": [response],
+            "emotion_tags": live_scores # 👈 这一行保证了后端的分数能传回 main.py
+            }
 
 
 def node_rebuild_conclusion(state: CBTState):
@@ -371,7 +376,7 @@ def process_tool_calls(state: CBTState):
             # 【Supabase 写入】第一次拿到客观事件，插入整行数据
             if supabase and session_id:
                 try:
-                    supabase.table('cbt_sessions').insert({
+                    supabase.table('cbt_sessions').upsert({
                         "id": session_id,
                         "user_id": user_id,
                         "raw_event": args["summary"]
