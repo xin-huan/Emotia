@@ -3,6 +3,9 @@
 ```python
 npm run dev
 ```
+```python
+uvicorn app.main:app --reload
+```
 ### 第一步：拉取代码
 建立一个新的文件夹
 ```python
