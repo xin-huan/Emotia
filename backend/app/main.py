@@ -131,7 +131,7 @@ async def chat_endpoint(req: ChatRequest):
             "raw_event": f"🗨️ {preview_text}"
         }).execute()
     except Exception as e:
-        print(f"⚠️ 初始化会话失败: {e}")
+        pass
 
     # 1. 记录用户消息
     user_msg_data = {
@@ -144,6 +144,8 @@ async def chat_endpoint(req: ChatRequest):
 
     # 2. 调用 Agent 获取结果
     agent_res = process_cbt_chat(req.session_id, req.user_id, req.message)
+    
+    print(f"📦 [API准备发货] agent_res里的数据: {agent_res.get('full_emotions')}")
 
     # 3. 记录 Agent 消息
     agent_msg_data = {
@@ -156,12 +158,14 @@ async def chat_endpoint(req: ChatRequest):
 
     # 4. 构造 SSE 生成器
     async def sse_generator():
+        print(f"📡 发送前端数据: {agent_res.get('full_emotions')}")
         whitebox_data = {
             'type': 'data_update',
             'emotion_tags': agent_res.get('full_emotions', {}),
             'evidences': agent_res.get('evidences', [])
         }
         yield f"data: {json.dumps(whitebox_data, ensure_ascii=False)}\n\n"
+        print(f"📡 [SSE发送] 最终发往前端的数据: {whitebox_data['emotion_tags']}")
 
         full_reply = agent_res['reply']
         chunk_size = 2
@@ -493,11 +497,42 @@ async def submit_test(req: TestSubmitRequest):
 @app.get("/api/user/test-history/{user_id}")
 def get_test_history(user_id: str):
     res = supabase.table("user_test_results") \
-        .select("created_at, total_score, result_level, dimension_scores, tests(title)") \
+        .select("id, created_at, total_score, result_level, analysis_text, dimension_scores, tests(title, icon)") \
         .eq("user_id", user_id) \
         .order("created_at", desc=True) \
         .execute()
     return res.data
+
+
+# --- 个人空间：用户活跃度统计 (支持 7d/30d) ---
+@app.get("/api/user/usage-stats/{user_id}")
+def get_usage_stats(user_id: str, days: int = 7):
+    from datetime import datetime, timedelta, timezone
+    
+    # 1. 获取三方数据：测试、对话、发帖
+    tests = supabase.table("user_test_results").select("created_at").eq("user_id", user_id).execute()
+    sessions = supabase.table("cbt_sessions").select("created_at").eq("user_id", user_id).execute()
+    posts = supabase.table("forum_posts").select("created_at").eq("user_id", user_id).execute()
+
+    stats = {}
+    for i in range(days):
+        # 倒序排列，保证图表从左往右是时间正序
+        d = (datetime.now() - timedelta(days=(days-1-i))).strftime('%m-%d')
+        stats[d] = {"test": 0, "agent": 0, "post": 0, "total": 0}
+
+    def fill_stats(rows, key):
+        for row in rows:
+            dt = datetime.fromisoformat(row['created_at'].replace('Z', '+00:00'))
+            d_str = dt.astimezone(timezone(timedelta(hours=8))).strftime('%m-%d')
+            if d_str in stats:
+                stats[d_str][key] += 1
+                stats[d_str]["total"] += 1
+
+    fill_stats(tests.data, "test")
+    fill_stats(sessions.data, "agent")
+    fill_stats(posts.data, "post")
+
+    return [{"date": k, **v} for k, v in stats.items()]
 
 
 
@@ -514,15 +549,53 @@ def get_user_sessions(user_id: str):
 
 
 @app.get("/api/chat/history/{session_id}")
+@app.get("/api/user/session-detail/{session_id}") 
 def get_chat_history(session_id: str):
     s_id = session_id.strip('"').strip("'")
-    res = supabase.table("chat_messages") \
-        .select("sender, content, created_at") \
+    
+    # 1. 先去数据库拿这次会话的“元数据” (这里才有 mood_scores 和 evidence_list)
+    session_info = supabase.table("cbt_sessions") \
+        .select("raw_event, emotion_labels, evidence_list, mood_scores, created_at") \
+        .eq("id", s_id).single().execute()
+    
+    data = session_info.data if session_info.data else {}
+
+    # 2. 🚀 [修复逻辑顺序] 拿到 data 后，再计算开始 vs 结束的对比
+    start_mood = {}
+    end_mood = {}
+    if data.get("mood_scores") and len(data["mood_scores"]) > 0:
+        start_mood = data["mood_scores"][0]   # 第一轮打分
+        end_mood = data["mood_scores"][-1]    # 最后一轮打分
+
+    # 3. 查出这次会话的所有聊天文字记录
+    messages_res = supabase.table("chat_messages") \
+        .select("sender, content, created_at, cbt_stage") \
         .eq("session_id", s_id) \
         .order("created_at", desc=False) \
         .execute()
-    return res.data
+    
+    # 4. 提取最新阶段
+    last_stage = "未知阶段"
+    if messages_res.data:
+        for m in reversed(messages_res.data):
+            if m.get("cbt_stage"):
+                last_stage = m["cbt_stage"]
+                break
 
+    # 5. 组合最终包裹
+    return {
+        "raw_event": data.get("raw_event", "未命名会话"),
+        "emotion_labels": data.get("emotion_labels", {}),
+        "evidence_list": data.get("evidence_list", []),
+        "mood_scores": data.get("mood_scores", []),
+        "created_at": data.get("created_at"),
+        "current_stage": last_stage,
+        "messages": messages_res.data, # 聊天文字列表
+        "comparison": {                # 🚀 专门给前端画对比图用的
+            "start": start_mood,
+            "end": end_mood
+        }
+    }
 
 @app.get("/api/tasks/{user_id}")
 async def get_daily_tasks(user_id: str):
