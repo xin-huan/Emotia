@@ -124,11 +124,11 @@ export default function ProfileFullDemo() {
 
   return (
     <ClickSpark sparkColor='#E58889'>
-    <div className="min-h-screen bg-gray-50 pt-24 px-6 flex justify-center pb-20">
+    <div className="min-h-screen bg-wysa-pink pt-24 px-6 flex justify-center pb-20">
       <div className="max-w-6xl w-full flex gap-8">
-        
+
         {/* --- 左侧：导航菜单 --- */}
-        <div className="w-64 space-y-4">
+        <div className="w-64 space-y-4 sticky top-28 self-start">
           <div className="bg-white p-6 rounded-[2rem] shadow-sm text-center mb-6 border border-pink-50">
              <div className="text-4xl mb-2">🧑‍🚀</div>
              <p className="font-black text-wysa-green uppercase tracking-tighter">My Mind Space</p>
@@ -141,17 +141,17 @@ export default function ProfileFullDemo() {
         </div>
 
         {/* --- 右侧：内容区 --- */}
-        <div className="flex-1 bg-white rounded-[3rem] p-10 shadow-sm overflow-y-auto h-[85vh] relative border border-gray-100">
-          
+        <div className="flex-1 space-y-8 pb-20">
+
           {/* TAB 1: 疗愈回溯 (Agent记录) */}
           {activeTab === 'sessions' && (
             <div className="animate-in fade-in duration-500">
               {!sessionDetail ? (
                 <>
-                  <h3 className="text-2xl font-black text-gray-800 mb-6">每周状态回溯</h3>
+                  {/* 卡片 1: 每周状态回溯 + 活跃度足迹图 */}
+                  <div className="bg-white rounded-[3rem] p-10 shadow-sm border border-pink-100">
+                    <h3 className="text-2xl font-black text-gray-800 mb-6">每周状态回溯</h3>
 
-                  {/* 🚀 活跃度足迹图卡片 */}
-                  <div className="bg-white p-8 rounded-[2.5rem] shadow-sm mb-8 border border-pink-100">
                     <div className="flex justify-between items-center mb-10">
                       <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                         <span className="text-lg">🌿</span> 疗愈足迹 (全站活跃度)
@@ -163,7 +163,6 @@ export default function ProfileFullDemo() {
                     </div>
 
                     <div className="relative h-48 w-full group">
-                      {/* 使用 viewBox 定义一个 1000x200 的固定坐标空间，彻底解决显示问题 */}
                       <svg viewBox="0 0 1000 200" className="w-full h-full overflow-visible">
                         <defs>
                           <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
@@ -173,9 +172,8 @@ export default function ProfileFullDemo() {
                         </defs>
 
                         {usageData.length > 1 && (() => {
-                          // 计算坐标的逻辑
                           const getX = (i) => (i / (usageData.length - 1)) * 1000;
-                          const getY = (val) => 180 - (Math.min(val, 5) * 35); // 满分设为5次，1次起步
+                          const getY = (val) => 180 - (Math.min(val, 5) * 35);
 
                           const points = usageData.map((d, i) => `${getX(i)},${getY(d.total)}`).join(' ');
                           const d_path = `M ${points}`;
@@ -183,19 +181,14 @@ export default function ProfileFullDemo() {
 
                           return (
                             <>
-                              {/* 1. 填充阴影面积 */}
                               <path d={d_area} fill="url(#areaGradient)" />
-                              {/* 2. 绘制主折线 */}
                               <path d={d_path} fill="none" stroke="#F472B6" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-                              
-                              {/* 3. 绘制数据交互点 */}
                               {usageData.map((day, i) => (
                                 <g key={i} className="group/item">
-                                  <circle 
-                                    cx={getX(i)} cy={getY(day.total)} r="8" 
-                                    className="fill-white stroke-pink-500 stroke-[4px] cursor-help transition-all group-hover/item:r-10" 
+                                  <circle
+                                    cx={getX(i)} cy={getY(day.total)} r="8"
+                                    className="fill-white stroke-pink-500 stroke-[4px] cursor-help transition-all group-hover/item:r-10"
                                   />
-                                  {/* 🚀 重点：悬停显示的详细数据浮窗 */}
                                   <foreignObject x={getX(i) - 60} y={getY(day.total) - 85} width="120" height="70" className="opacity-0 group-hover/item:opacity-100 transition-opacity pointer-events-none">
                                     <div className="bg-gray-900/95 backdrop-blur text-white p-3 rounded-2xl shadow-2xl border border-white/20 text-center">
                                       <p className="text-[10px] font-bold text-pink-400 mb-1">{day.date}</p>
@@ -214,7 +207,6 @@ export default function ProfileFullDemo() {
                         })()}
                       </svg>
 
-                      {/* X 轴日期 */}
                       <div className="flex justify-between mt-6 px-1">
                         {usageData.filter((_, i) => i % (period === 30 ? 5 : 1) === 0).map((day, i) => (
                           <span key={i} className="text-[10px] text-gray-400 font-bold tracking-tighter">{day.date}</span>
@@ -223,22 +215,26 @@ export default function ProfileFullDemo() {
                     </div>
                   </div>
 
-                  <h3 className="text-sm font-bold text-gray-400 mb-4 uppercase tracking-widest">历史对话清单</h3>
-                  <div className="space-y-3">
-                    {data.sessions.map(s => (
-                      <div key={s.id} onClick={() => handleLoadDetail(s.id)} className="p-6 bg-white border-2 border-gray-50 rounded-[1.5rem] cursor-pointer hover:border-pink-200 hover:shadow-md transition-all flex justify-between items-center group">
-                        <div>
-                          <span className="text-[10px] text-gray-300 font-bold uppercase">{new Date(s.created_at).toLocaleDateString()}</span>
-                          <p className="font-bold text-wysa-green mt-1">{s.raw_event}</p>
+                  {/* 卡片 2: 历史对话清单 */}
+                  <div className="bg-white rounded-[3rem] p-10 shadow-sm border border-pink-100">
+                    <h3 className="text-sm font-bold text-gray-400 mb-4 uppercase tracking-widest">历史对话清单</h3>
+                    <div className="space-y-3">
+                      {data.sessions.map(s => (
+                        <div key={s.id} onClick={() => handleLoadDetail(s.id)} className="p-6 bg-white border-2 border-gray-50 rounded-[1.5rem] cursor-pointer hover:border-pink-200 hover:shadow-md transition-all flex justify-between items-center group">
+                          <div>
+                            <span className="text-[10px] text-gray-300 font-bold uppercase">{new Date(s.created_at).toLocaleDateString()}</span>
+                            <p className="font-bold text-wysa-green mt-1">{s.raw_event}</p>
+                          </div>
+                          <div className="text-pink-400 font-black opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">→</div>
                         </div>
-                        <div className="text-pink-400 font-black opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">→</div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 </>
               ) : (
-                <div className="animate-in slide-in-from-right-4 duration-500">
-                  <button onClick={() => setSessionDetail(null)} className="text-pink-500 font-bold mb-6 flex items-center gap-2 hover:bg-pink-50 p-2 rounded-xl transition-all">
+                <div className="animate-in slide-in-from-right-4 duration-500 space-y-8">
+                  {/* 返回按钮 - 独立一行 */}
+                  <button onClick={() => setSessionDetail(null)} className="text-pink-500 font-bold flex items-center gap-2 hover:bg-pink-50 p-2 rounded-xl transition-all">
                     <span className="text-xl">←</span> 返回清单
                   </button>
                   
@@ -323,8 +319,8 @@ export default function ProfileFullDemo() {
 
           {/* TAB 2: 测评历史 */}
           {activeTab === 'tests' && (
-            <div className="space-y-8 animate-in fade-in duration-500">
-              <h3 className="text-2xl font-black text-gray-800">量表测试记录</h3>
+            <div className="bg-white rounded-[3rem] p-10 shadow-sm border border-pink-100 animate-in fade-in duration-500">
+              <h3 className="text-2xl font-black text-gray-800 mb-6">量表测试记录</h3>
               <div className="grid gap-6">
                 {data.tests.map((t, i) => (
                   <div 
@@ -347,8 +343,8 @@ export default function ProfileFullDemo() {
 
           {/* TAB 3: 互动消息 */}
           {activeTab === 'social' && (
-            <div className="space-y-6 animate-in fade-in duration-500">
-              <h3 className="text-2xl font-black text-gray-800">社交动态</h3>
+            <div className="bg-white rounded-[3rem] p-10 shadow-sm border border-pink-100 animate-in fade-in duration-500">
+              <h3 className="text-2xl font-black text-gray-800 mb-6">社交动态</h3>
               {data.notifs.map(n => (
                 <div key={n.id} className="flex gap-6 p-6 bg-white border-2 border-gray-50 rounded-[2rem] items-center hover:border-blue-100 hover:shadow-lg transition-all group">
                   <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
