@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ClickSpark from '../components/ClickSpark'; 
+
 const PsychRadarChart = ({ data, size = 300 }) => {
-  // 如果数据不足以构成多边形，则不渲染
   if (!data || data.length < 3) return null;
 
   const centerX = size / 2;
@@ -10,7 +10,6 @@ const PsychRadarChart = ({ data, size = 300 }) => {
   const radius = size * 0.35;
   const angleStep = (Math.PI * 2) / data.length;
 
-  // 1. 计算背景网格（五边形/多边形框架）
   const levels = [0.2, 0.4, 0.6, 0.8, 1];
   const gridLines = levels.map(level => {
     return data.map((_, i) => {
@@ -20,10 +19,8 @@ const PsychRadarChart = ({ data, size = 300 }) => {
     }).join(' ');
   });
 
-  // 2. 计算用户得分的坐标点 (假设分值范围是 1-5)
   const dataPoints = data.map((d, i) => {
-    // 强制限制在 0.5 - 5 之间，防止图表缩成一个点或撑爆
-    const val = Math.max(0.5, Math.min(d.value, 5)); 
+    const val = Math.max(0.5, Math.min(d.value, 5));
     const x = centerX + (radius * (val / 5)) * Math.cos(i * angleStep - Math.PI / 2);
     const y = centerY + (radius * (val / 5)) * Math.sin(i * angleStep - Math.PI / 2);
     return `${x},${y}`;
@@ -31,19 +28,16 @@ const PsychRadarChart = ({ data, size = 300 }) => {
 
   return (
     <svg width={size} height={size} className="mx-auto overflow-visible drop-shadow-sm">
-      {/* 绘制背景网格线 */}
       {gridLines.map((line, i) => (
         <polygon key={i} points={line} fill="none" stroke="#f0f0f0" strokeWidth="1" />
       ))}
-      
-      {/* 绘制坐标轴 */}
+
       {data.map((_, i) => {
         const x = centerX + radius * Math.cos(i * angleStep - Math.PI / 2);
         const y = centerY + radius * Math.sin(i * angleStep - Math.PI / 2);
         return <line key={i} x1={centerX} y1={centerY} x2={x} y2={y} stroke="#f0f0f0" strokeWidth="1" />;
       })}
 
-      {/* 🚀 绘制用户得分区域（粉色半透明多边形） */}
       <motion.polygon
         initial={{ opacity: 0, scale: 0.5 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -54,7 +48,6 @@ const PsychRadarChart = ({ data, size = 300 }) => {
         strokeLinejoin="round"
       />
 
-      {/* 绘制维度名称标签 */}
       {data.map((d, i) => {
         const x = centerX + (radius + 25) * Math.cos(i * angleStep - Math.PI / 2);
         const y = centerY + (radius + 25) * Math.sin(i * angleStep - Math.PI / 2);
@@ -74,51 +67,108 @@ const PsychRadarChart = ({ data, size = 300 }) => {
     </svg>
   );
 };
+
 export default function ProfileFullDemo() {
-  const [activeTab, setActiveTab] = useState('sessions'); // sessions | tests | social
+  const [activeTab, setActiveTab] = useState('sessions');
   const [data, setData] = useState({ sessions: [], tests: [], notifs: [] });
   const [sessionDetail, setSessionDetail] = useState(null);
-  
+
   const userId = localStorage.getItem('user_id');
   const API_BASE = "http://localhost:8000/api";
 
-  // --- 🚀 修正 1：统一变量名为 setUsageData ---
   const [usageData, setUsageData] = useState([]);
-  const [period, setPeriod] = useState(7); // 7 | 30
-  const [selectedTestResult, setSelectedTestResult] = useState(null); // 存储当前选中的测评详情记录
+  const [period, setPeriod] = useState(7);
+  const [selectedTestResult, setSelectedTestResult] = useState(null);
 
-  // 获取活跃度统计
+  const [emotionHistory, setEmotionHistory] = useState([]);
+  const [sunshineHistory, setSunshineHistory] = useState([]);
+  const [achievements, setAchievements] = useState({});
+
   useEffect(() => {
     if (userId) {
       fetch(`${API_BASE}/user/usage-stats/${userId}?days=${period}`)
         .then(res => res.json())
-        .then(data => setUsageData(data)) // 👈 对应上面的 setUsageData
+        .then(data => setUsageData(data))
         .catch(err => console.error("统计获取失败", err));
     }
   }, [userId, period]);
 
-  // 初始化加载三部分数据
   useEffect(() => {
     if (userId) {
       Promise.all([
         fetch(`${API_BASE}/user/sessions/${userId}`).then(res => res.json()),
         fetch(`${API_BASE}/user/test-history/${userId}`).then(res => res.json()),
-        fetch(`${API_BASE}/user/notifications/${userId}`).then(res => res.json())
-      ]).then(([sessions, tests, notifs]) => {
-        setData({ 
-          sessions: sessions || [], 
-          tests: tests || [], 
-          notifs: notifs || [] 
+        fetch(`${API_BASE}/user/notifications/${userId}`).then(res => res.json()),
+        fetch(`${API_BASE}/user/emotion-history/${userId}`).then(res => res.json()),
+        fetch(`${API_BASE}/user/sunshine-history/${userId}`).then(res => res.json()),
+        fetch(`${API_BASE}/user/achievements/${userId}`).then(res => res.json())
+      ]).then(([sessions, tests, notifs, emotions, sunshines, achData]) => {
+        setData({
+          sessions: sessions || [],
+          tests: tests || [],
+          notifs: notifs || []
         });
+        setEmotionHistory(emotions || []);
+        setSunshineHistory(sunshines || []);
+        if (achData && achData.status === 'success') {
+          setAchievements(achData.data || {});
+        }
       });
     }
   }, [userId]);
 
-  // 加载 Agent 深度详情
   const handleLoadDetail = (sid) => {
     fetch(`${API_BASE}/user/session-detail/${sid}`)
       .then(res => res.json()).then(data => setSessionDetail(data));
   };
+
+  const todayDate = new Date();
+  const currentYear = todayDate.getFullYear();
+  const currentMonth = todayDate.getMonth();
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
+
+  const emotionDict = {};
+  emotionHistory.forEach(item => {
+    emotionDict[item.checkin_date] = item.emotion_score;
+  });
+
+  const getEmotionIcon = (score) => {
+    if (score === 5) return '🤩';
+    if (score === 4) return '😊';
+    if (score === 3) return '😌';
+    if (score === 2) return '😔';
+    if (score === 1) return '😭';
+    return null;
+  };
+
+  const formatPad = (num) => num < 10 ? `0${num}` : num;
+
+  const achievementCategories = [
+    {
+      title: "认知与疗愈",
+      icon: "🧠",
+      items: [
+        { key: "first_session", name: "初探心境", desc: "首次唤醒 Agent 体验咨询", icon: "🎖️" },
+      ]
+    },
+    {
+      title: "阳光储蓄罐",
+      icon: "☀️",
+      items: [
+        { key: "light_catcher", name: "微光捕手", desc: "首次记录一件好事", icon: "🌱" },
+        { key: "sunflower", name: "向日葵体质", desc: "累计存入 5 束阳光", icon: "☀️" },
+        { key: "weekend_joy", name: "周末赏味", desc: "在休息日主动感受快乐", icon: "🍰" },
+      ]
+    },
+    {
+      title: "时光里程碑",
+      icon: "⏳",
+      items: [
+        { key: "spark", name: "星星之火", desc: "累计完成 3 天打卡", icon: "🔥" },
+      ]
+    }
+  ];
 
   if (!userId) return <div className="p-20 text-center">请先登录</div>;
 
@@ -137,18 +187,19 @@ export default function ProfileFullDemo() {
             <button onClick={() => {setActiveTab('sessions'); setSessionDetail(null)}} className={`w-full p-4 rounded-2xl text-left font-bold transition-all ${activeTab==='sessions'?'bg-pink-50 text-pink-500':'text-gray-400 hover:bg-gray-50'}`}>📈 疗愈回溯</button>
             <button onClick={() => setActiveTab('tests')} className={`w-full p-4 rounded-2xl text-left font-bold transition-all ${activeTab==='tests'?'bg-pink-50 text-pink-500':'text-gray-400 hover:bg-gray-50'}`}>📑 测评历史</button>
             <button onClick={() => setActiveTab('social')} className={`w-full p-4 rounded-2xl text-left font-bold transition-all ${activeTab==='social'?'bg-pink-100 text-pink-500':'text-gray-400 hover:bg-gray-50'}`}>🔔 互动消息</button>
+            <button onClick={() => {setActiveTab('calendar'); setSessionDetail(null)}} className={`w-full p-4 rounded-2xl text-left font-bold transition-all ${activeTab==='calendar'?'bg-orange-50 text-orange-500':'text-gray-400 hover:bg-gray-50'}`}>☀️ 阳光手账</button>
+            <button onClick={() => {setActiveTab('achievements'); setSessionDetail(null)}} className={`w-full p-4 rounded-2xl text-left font-bold transition-all ${activeTab==='achievements'?'bg-yellow-50 text-yellow-600':'text-gray-400 hover:bg-gray-50'}`}>🏆 荣誉勋章</button>
           </nav>
         </div>
 
         {/* --- 右侧：内容区 --- */}
         <div className="flex-1 space-y-8 pb-20">
 
-          {/* TAB 1: 疗愈回溯 (Agent记录) */}
+          {/* TAB 1: 疗愈回溯 */}
           {activeTab === 'sessions' && (
             <div className="animate-in fade-in duration-500">
               {!sessionDetail ? (
                 <>
-                  {/* 卡片 1: 每周状态回溯 + 活跃度足迹图 */}
                   <div className="bg-white rounded-[3rem] p-10 shadow-sm border border-pink-100">
                     <h3 className="text-2xl font-black text-gray-800 mb-6">每周状态回溯</h3>
 
@@ -215,7 +266,6 @@ export default function ProfileFullDemo() {
                     </div>
                   </div>
 
-                  {/* 卡片 2: 历史对话清单 */}
                   <div className="bg-white rounded-[3rem] p-10 shadow-sm border border-pink-100">
                     <h3 className="text-sm font-bold text-gray-400 mb-4 uppercase tracking-widest">历史对话清单</h3>
                     <div className="space-y-3">
@@ -233,11 +283,10 @@ export default function ProfileFullDemo() {
                 </>
               ) : (
                 <div className="animate-in slide-in-from-right-4 duration-500 space-y-8">
-                  {/* 返回按钮 - 独立一行 */}
                   <button onClick={() => setSessionDetail(null)} className="text-pink-500 font-bold flex items-center gap-2 hover:bg-pink-50 p-2 rounded-xl transition-all">
                     <span className="text-xl">←</span> 返回清单
                   </button>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                     <div className="bg-gray-900 text-white p-8 rounded-[2.5rem] shadow-xl">
                       <h4 className="text-pink-400 text-[10px] font-black mb-3 uppercase tracking-tighter">01 事件回溯</h4>
@@ -271,7 +320,6 @@ export default function ProfileFullDemo() {
                     </div>
                   </div>
 
-                  {/* 🚀 修正 2：增强多维情绪彩色曲线 */}
                   <div className="bg-gray-900 p-10 rounded-[3rem] text-white shadow-2xl">
                     <div className="flex justify-between items-center mb-10">
                       <h4 className="text-gray-500 text-[10px] font-black uppercase tracking-widest">04 情绪指纹演变轨迹</h4>
@@ -289,11 +337,11 @@ export default function ProfileFullDemo() {
                       {sessionDetail.mood_scores?.map((scoreObj, i) => (
                         <div key={i} className="flex-1 flex items-end gap-1 h-full group relative">
                           {Object.entries(scoreObj).map(([label, val], idx) => (
-                            <div 
-                              key={label} 
-                              className="flex-1 rounded-t-full transition-all duration-1000 ease-out cursor-pointer hover:brightness-125" 
-                              style={{ 
-                                height: `${val}%`, 
+                            <div
+                              key={label}
+                              className="flex-1 rounded-t-full transition-all duration-1000 ease-out cursor-pointer hover:brightness-125"
+                              style={{
+                                height: `${val}%`,
                                 backgroundColor: idx===0?'#E58889':idx===1?'#88E5BA':'#88ACE5',
                                 opacity: 0.8
                               }}
@@ -323,9 +371,9 @@ export default function ProfileFullDemo() {
               <h3 className="text-2xl font-black text-gray-800 mb-6">量表测试记录</h3>
               <div className="grid gap-6">
                 {data.tests.map((t, i) => (
-                  <div 
-                    key={i} 
-                    onClick={() => setSelectedTestResult(t)} // 🚀 点击保存当前记录到状态
+                  <div
+                    key={i}
+                    onClick={() => setSelectedTestResult(t)}
                     className="p-8 bg-white border-2 border-gray-50 rounded-[2.5rem] flex justify-between items-center hover:shadow-xl transition-all hover:border-pink-100 group">
                     <div className="flex-1 pr-10">
                       <span className="bg-pink-50 text-pink-500 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">{new Date(t.created_at).toLocaleDateString()}</span>
@@ -352,11 +400,11 @@ export default function ProfileFullDemo() {
                   </div>
                   <div className="flex-1">
                     <p className="text-sm text-gray-600">
-                      <span className="font-black text-gray-900">{n.actor?.username || "神秘访客"}</span> 
+                      <span className="font-black text-gray-900">{n.actor?.username || "神秘访客"}</span>
                       {n.type === 'like' ? ' 给你的倾诉点了一个共鸣' : ' 回复了你的提问'}
                     </p>
                     <div className="mt-2 text-xs text-gray-400 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                       帖子内容："{n.post?.content || "内容已被删除"}"
+                        帖子内容："{n.post?.content || "内容已被删除"}"
                     </div>
                   </div>
                   <span className="text-[10px] text-gray-300 font-bold">{new Date(n.created_at).toLocaleDateString()}</span>
@@ -371,56 +419,223 @@ export default function ProfileFullDemo() {
             </div>
           )}
 
-        </div>
-      </div>
-    </div>
-          {/* 🚀 关键：测评详情弹窗 (放在 ClickSpark 内部，最外层 div 之外) */}
-      <AnimatePresence>
-        {selectedTestResult && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 pointer-events-auto">
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setSelectedTestResult(null)}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative bg-white w-full max-w-2xl max-h-[85vh] rounded-[3rem] shadow-2xl overflow-hidden flex flex-col"
-            >
-              <div className="p-8 border-b flex justify-between items-center">
-                <div>
-                  <h2 className="text-xl font-black text-wysa-green">{selectedTestResult.tests?.title}</h2>
-                  <p className="text-xs text-gray-400">回溯日期：{new Date(selectedTestResult.created_at).toLocaleString()}</p>
+          {/* 🚀🚀🚀 TAB 4: 阳光手账 (被找回的代码区域) */}
+          {activeTab === 'calendar' && (
+            <div className="animate-in fade-in duration-500 space-y-8">
+
+              {/* 模块 A：情绪日历 */}
+              <div className="bg-white rounded-[3rem] p-10 shadow-sm border border-orange-100">
+                <div className="flex justify-between items-center mb-8">
+                  <div>
+                    <h3 className="text-2xl font-black text-gray-800">情绪日历</h3>
+                    <p className="text-sm text-gray-400 mt-1 font-bold">{currentYear}年 {currentMonth + 1}月</p>
+                  </div>
+                  <div className="flex gap-1.5 flex-wrap">
+                    <span className="text-[10px] bg-gray-50 px-2 py-1.5 rounded-full text-gray-500 font-bold">🤩 极好</span>
+                    <span className="text-[10px] bg-gray-50 px-2 py-1.5 rounded-full text-gray-500 font-bold">😊 开心</span>
+                    <span className="text-[10px] bg-gray-50 px-2 py-1.5 rounded-full text-gray-500 font-bold">😌 平静</span>
+                    <span className="text-[10px] bg-gray-50 px-2 py-1.5 rounded-full text-gray-500 font-bold">😔 低落</span>
+                    <span className="text-[10px] bg-gray-50 px-2 py-1.5 rounded-full text-gray-500 font-bold">😭 糟糕</span>
+                  </div>
                 </div>
-                <button onClick={() => setSelectedTestResult(null)} className="text-2xl text-gray-300 hover:text-pink-500">✕</button>
+
+                {/* 日历网格 */}
+                <div className="grid grid-cols-7 gap-4 text-center">
+                  {/* 表头 */}
+                  {['日', '一', '二', '三', '四', '五', '六'].map(day => (
+                    <div key={day} className="text-[10px] font-black text-gray-300 uppercase">{day}</div>
+                  ))}
+
+                  {/* 月初空白占位 */}
+                  {Array.from({ length: firstDayOfMonth }).map((_, i) => (
+                    <div key={`empty-${i}`} className="aspect-square rounded-[1.5rem]" />
+                  ))}
+
+                  {/* 真实查询当月每天的数据 */}
+                  {Array.from({ length: daysInMonth }).map((_, i) => {
+                    const date = i + 1;
+                    const dateString = `${currentYear}-${formatPad(currentMonth + 1)}-${formatPad(date)}`;
+
+                    const dbScore = emotionDict[dateString];
+                    const emotion = dbScore ? getEmotionIcon(dbScore) : null;
+                    const isToday = date === todayDate.getDate();
+
+                    return (
+                      <div
+                        key={i}
+                        className={`aspect-square rounded-[1.5rem] flex flex-col items-center justify-center relative transition-all cursor-pointer hover:scale-105 hover:shadow-md
+                          ${isToday ? 'bg-orange-50 border-2 border-orange-200' : 'bg-gray-50/50 hover:bg-orange-50/30'}
+                          ${emotion ? 'border-none' : ''}
+                        `}
+                      >
+                        <span className={`text-[11px] font-bold ${isToday ? 'text-orange-500' : 'text-gray-400'}`}>
+                          {date}
+                        </span>
+                        {emotion && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="text-2xl mt-1 filter drop-shadow-sm"
+                          >
+                            {emotion}
+                          </motion.div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              
-              <div className="p-10 overflow-y-auto flex-1 space-y-8">
-                <div className="text-center bg-pink-50 rounded-[2rem] py-8 border border-pink-100">
-                  <div className="text-7xl font-black text-pink-500">{selectedTestResult.total_score}</div>
-                  <div className="font-bold text-pink-400 mt-2">结论：{selectedTestResult.result_level}</div>
+
+              {/* 模块 B：阳光储蓄罐 */}
+              <div className="bg-gradient-to-br from-orange-50 to-pink-50 rounded-[3rem] p-10 shadow-sm border border-orange-100/50">
+                <div className="flex justify-between items-end mb-8">
+                  <div>
+                    <h3 className="text-2xl font-black text-orange-500 flex items-center gap-2">
+                      <span className="text-3xl">🍯</span> 阳光储蓄罐
+                    </h3>
+                    <p className="text-sm text-orange-400/80 mt-2 font-bold">
+                      这里收集了 {sunshineHistory.length} 束照亮你的光
+                    </p>
+                  </div>
                 </div>
 
-                <div className="bg-gray-900 text-white p-8 rounded-[2.5rem]">
-                  <h4 className="text-pink-400 text-[10px] font-black mb-4 uppercase tracking-widest">💡 历史诊断解析</h4>
-                  <p className="text-sm leading-relaxed opacity-80 italic">{selectedTestResult.analysis_text || "暂无详细建议内容。"}</p>
-                </div>
-
-                {/* 这里的 PsychRadarChart 记得在文件里定义 */}
-                {selectedTestResult.dimension_scores?.length >= 3 && (
-                  <div className="p-6 border-2 border-gray-50 rounded-[2.5rem] bg-gray-50/30">
-                    <PsychRadarChart data={selectedTestResult.dimension_scores} size={280} />
+                {sunshineHistory.length === 0 ? (
+                  <div className="text-center py-16 bg-white/50 rounded-[2rem] border border-white">
+                    <p className="text-gray-400 font-bold">你的储蓄罐还是空的，今天去主页记录一件好事吧！</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {sunshineHistory.map((item, index) => (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        key={item.id}
+                        className="bg-white/80 backdrop-blur-sm p-6 rounded-[2rem] border border-white shadow-sm hover:shadow-md transition-all group"
+                      >
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="text-[10px] font-black text-orange-300 uppercase tracking-widest">{item.record_date}</span>
+                          <span className="text-[10px] font-black text-orange-500 bg-orange-100/50 px-2.5 py-1 rounded-full">✨ 阳光</span>
+                        </div>
+                        <p className="text-gray-700 font-medium leading-relaxed group-hover:text-gray-900 transition-colors">
+                          "{item.content}"
+                        </p>
+                      </motion.div>
+                    ))}
                   </div>
                 )}
               </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+
+            </div>
+          )}
+
+          {/* 🚀🚀🚀 TAB 5: 荣誉勋章 */}
+          {activeTab === 'achievements' && (
+            <div className="animate-in fade-in duration-500 space-y-8">
+              <div className="bg-gradient-to-br from-yellow-50 to-amber-50 rounded-[3rem] p-10 shadow-sm border border-yellow-100/50">
+                <h3 className="text-3xl font-black text-amber-500 mb-2">荣誉勋章墙</h3>
+                <p className="text-amber-600/80 font-bold mb-8">在这里见证你的每一次成长与蜕变</p>
+
+                <div className="space-y-10">
+                  {achievementCategories.map((category, idx) => (
+                    <div key={idx}>
+                      <h4 className="text-lg font-black text-gray-800 mb-4 flex items-center gap-2">
+                        <span>{category.icon}</span> {category.title}
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {category.items.map((ach) => {
+                          const isUnlocked = !!achievements[ach.key];
+                          const unlockDate = isUnlocked ? String(achievements[ach.key]).substring(0, 10) : null;
+
+                          return (
+                            <div
+                              key={ach.key}
+                              className={`relative p-6 rounded-[2rem] border-2 transition-all flex flex-col items-center text-center group
+                                ${isUnlocked ? 'bg-white border-yellow-200 shadow-sm hover:shadow-md hover:-translate-y-1' : 'bg-white/40 border-gray-100 opacity-70'}
+                              `}
+                            >
+                              <div className={`text-5xl mb-4 transition-transform ${isUnlocked ? 'group-hover:scale-110' : 'grayscale opacity-40'}`}>
+                                {ach.icon}
+                              </div>
+                              <h5 className={`font-black mb-2 text-lg ${isUnlocked ? 'text-gray-800' : 'text-gray-400'}`}>
+                                {ach.name}
+                              </h5>
+                              <p className="text-[11px] text-gray-500 leading-relaxed min-h-[34px]">
+                                {ach.desc}
+                              </p>
+
+                              {/* 底部状态 */}
+                              <div className="mt-5 pt-4 border-t border-gray-100/50 w-full">
+                                {isUnlocked ? (
+                                  <span className="text-[10px] font-black text-amber-500 bg-amber-100/50 px-3 py-1.5 rounded-full uppercase tracking-widest">
+                                    解锁于 {unlockDate}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">
+                                    🔒 尚未解锁
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
+
+    {/* 测评详情弹窗 */}
+    <AnimatePresence>
+      {selectedTestResult && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 pointer-events-auto">
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setSelectedTestResult(null)}
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          />
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            className="relative bg-white w-full max-w-2xl max-h-[85vh] rounded-[3rem] shadow-2xl overflow-hidden flex flex-col"
+          >
+            <div className="p-8 border-b flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-black text-wysa-green">{selectedTestResult.tests?.title}</h2>
+                <p className="text-xs text-gray-400">回溯日期：{new Date(selectedTestResult.created_at).toLocaleString()}</p>
+              </div>
+              <button onClick={() => setSelectedTestResult(null)} className="text-2xl text-gray-300 hover:text-pink-500">✕</button>
+            </div>
+
+            <div className="p-10 overflow-y-auto flex-1 space-y-8">
+              <div className="text-center bg-pink-50 rounded-[2rem] py-8 border border-pink-100">
+                <div className="text-7xl font-black text-pink-500">{selectedTestResult.total_score}</div>
+                <div className="font-bold text-pink-400 mt-2">结论：{selectedTestResult.result_level}</div>
+              </div>
+
+              <div className="bg-gray-900 text-white p-8 rounded-[2.5rem]">
+                <h4 className="text-pink-400 text-[10px] font-black mb-4 uppercase tracking-widest">💡 历史诊断解析</h4>
+                <p className="text-sm leading-relaxed opacity-80 italic">{selectedTestResult.analysis_text || "暂无详细建议内容。"}</p>
+              </div>
+
+              {selectedTestResult.dimension_scores?.length >= 3 && (
+                <div className="p-6 border-2 border-gray-50 rounded-[2.5rem] bg-gray-50/30">
+                  <PsychRadarChart data={selectedTestResult.dimension_scores} size={280} />
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
 
     </ClickSpark>
   );
 }
-

@@ -11,7 +11,7 @@ import random
 import math
 from pydantic import BaseModel
 from app import scoring_engine 
-
+from datetime import datetime, timedelta, timezone
 # 导入你的包装器和数据库
 from agent.core import process_cbt_chat
 from app.database import supabase  # 确保你有这个文件
@@ -507,7 +507,7 @@ def get_test_history(user_id: str):
 # --- 个人空间：用户活跃度统计 (支持 7d/30d) ---
 @app.get("/api/user/usage-stats/{user_id}")
 def get_usage_stats(user_id: str, days: int = 7):
-    from datetime import datetime, timedelta, timezone
+
     
     # 1. 获取三方数据：测试、对话、发帖
     tests = supabase.table("user_test_results").select("created_at").eq("user_id", user_id).execute()
@@ -719,6 +719,18 @@ async def toggle_task(req: TaskToggleRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"更新任务状态失败: {str(e)}")
 
+# --- 个人空间新增：获取用户历史情绪打卡记录 ---
+@app.get("/api/user/emotion-history/{user_id}")
+def get_emotion_history(user_id: str):
+    res = supabase.table("daily_checkins").select("*").eq("user_id", user_id).order("checkin_date", desc=False).execute()
+    return res.data
+
+# --- 个人空间新增：获取用户历史阳光储蓄罐记录 ---
+@app.get("/api/user/sunshine-history/{user_id}")
+def get_sunshine_history(user_id: str):
+    res = supabase.table("sunshine_records").select("*").eq("user_id", user_id).order("record_date", desc=True).execute()
+    return res.data
+
 #  Agent 联动所需的数据模型与接口
 class AgentCompleteRequest(BaseModel):
     user_id: str
@@ -761,3 +773,75 @@ async def agent_assign_task(req: AgentTaskRequest):
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"插入专属任务失败: {str(e)}")
+
+
+@app.get("/api/user/achievements/{user_id}")
+def get_user_achievements(user_id: str):
+    achievements = {}
+
+    # 1. 第一步：查数据库，把已经解锁的成就全拿出来
+    try:
+        db_res = supabase.table("user_achievements").select("achievement_key, unlocked_at").eq("user_id",
+                                                                                               user_id).execute()
+        if db_res.data:
+            for item in db_res.data:
+                achievements[item["achievement_key"]] = item["unlocked_at"]
+    except Exception as e:
+        print(f"查成就表异常: {e}")
+
+    # 用一个列表暂存本次调用时刚刚解锁的成就，准备批量写入数据库
+    new_unlocked = []
+
+    # 2. 第二步：按需计算。如果某个成就没在 achievements 字典里（没解锁），才去查表计算
+
+    # 【初探心境】
+    if "first_session" not in achievements:
+        sessions = supabase.table("cbt_sessions").select("created_at").eq("user_id", user_id).execute()
+        if sessions.data and len(sessions.data) >= 1:
+            timestamp = sessions.data[0]["created_at"]
+            achievements["first_session"] = timestamp
+            new_unlocked.append({"user_id": user_id, "achievement_key": "first_session", "unlocked_at": timestamp})
+
+    # 【微光捕手】、【向日葵体质】、【周末赏味】
+    if "light_catcher" not in achievements or "sunflower" not in achievements or "weekend_joy" not in achievements:
+        sunshines = supabase.table("sunshine_records").select("record_date").eq("user_id", user_id).execute()
+        if sunshines.data:
+            sun_count = len(sunshines.data)
+
+            if sun_count >= 1 and "light_catcher" not in achievements:
+                timestamp = sunshines.data[0]["record_date"] + "T00:00:00+08:00"  # 日期补齐时间格式，防止数据库报错
+                achievements["light_catcher"] = timestamp
+                new_unlocked.append({"user_id": user_id, "achievement_key": "light_catcher", "unlocked_at": timestamp})
+
+            if sun_count >= 5 and "sunflower" not in achievements:
+                timestamp = sunshines.data[4]["record_date"] + "T00:00:00+08:00"
+                achievements["sunflower"] = timestamp
+                new_unlocked.append({"user_id": user_id, "achievement_key": "sunflower", "unlocked_at": timestamp})
+
+            if "weekend_joy" not in achievements:
+                for s in sunshines.data:
+                    date_obj = datetime.strptime(s["record_date"], "%Y-%m-%d")
+                    if date_obj.weekday() >= 5:  # 5是周六，6是周日
+                        timestamp = s["record_date"] + "T00:00:00+08:00"
+                        achievements["weekend_joy"] = timestamp
+                        new_unlocked.append(
+                            {"user_id": user_id, "achievement_key": "weekend_joy", "unlocked_at": timestamp})
+                        break
+
+    # 【星星之火】
+    if "spark" not in achievements:
+        checkins = supabase.table("daily_checkins").select("checkin_date").eq("user_id", user_id).execute()
+        if checkins.data and len(checkins.data) >= 3:
+            timestamp = checkins.data[2]["checkin_date"] + "T00:00:00+08:00"
+            achievements["spark"] = timestamp
+            new_unlocked.append({"user_id": user_id, "achievement_key": "spark", "unlocked_at": timestamp})
+
+    # 3. 第三步：如果有新解锁的成就，写入数据库。以后这几个成就就直接走第一步拿现成的了！
+    if new_unlocked:
+        try:
+            supabase.table("user_achievements").insert(new_unlocked).execute()
+            print(f"✅ 成功将 {len(new_unlocked)} 个新成就持久化到数据库！")
+        except Exception as e:
+            print(f"❌ 写入新成就异常: {e}")
+
+    return {"status": "success", "data": achievements}
