@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import ClickSpark from '../ClickSpark'; 
+import ClickSpark from '../components/ClickSpark'; 
 const PsychRadarChart = ({ data, size = 300 }) => {
   // 如果数据不足以构成多边形，则不渲染
   if (!data || data.length < 3) return null;

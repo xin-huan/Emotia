@@ -1,11 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import ClickSpark from '../ClickSpark';
-import Ballpit from '../Ballpit';
-import CircularGallery from '../CircularGallery';
+import ClickSpark from '../components/ClickSpark';
+import Balatro from '../components/Balatro';
+import CircularGallery from '../components/CircularGallery';
 
-// ==========================================
-// 1. 模拟数据定义 (给后端看的数据结构参考)
-// ==========================================
 
 // 补齐的 6 篇带 HTML 真实排版格式的文章
 const MOCK_ARTICLES = [
@@ -141,9 +138,12 @@ const MOCK_COMMENTS = {
 
 // 专家评价数据（新增了 avatar 字段绑定本地 1.jpg）
 const FEEDBACKS = [
-  { id: 1, name: 'Dr. Sarah', title: '临床心理学家', avatar: '/1.jpg', quote: '这个平台通过极具创意的互动方式，打破了传统心理宣泄的壁垒，让情绪的流动变得具象化。' },
-  { id: 2, name: '李明哲', title: '资深心理咨询师', avatar: '/1.jpg', quote: '球体的碰撞非常解压，这种结合了物理反馈的视觉疗法，对缓解轻度焦虑有显著效果。' },
-  { id: 3, name: 'Prof. Anderson', title: '行为科学研究员', avatar: '/1.jpg', quote: '社区氛围极其温暖。用户在互动中既能保持匿名安全感，又能感受到连接的真实感。' },
+  { id: 1, name: 'Dr. Sarah', title: '临床心理学家', avatar: '/M.jpeg', quote: '这个平台通过极具创意的互动方式，打破了传统心理宣泄的壁垒，让情绪的流动变得具象化。' },
+  { id: 2, name: '李明哲', title: '资深心理咨询师', avatar: '/N.jpg', quote: '球体的碰撞非常解压，这种结合了物理反馈的视觉疗法，对缓解轻度焦虑有显著效果。' },
+  { id: 3, name: 'Prof. Anderson', title: '行为科学研究员', avatar: '/I.jpg', quote: '社区氛围极其温暖。用户在互动中既能保持匿名安全感，又能感受到连接的真实感。' },
+  { id: 4, name: '周菲逸', title: '婚姻家庭咨询师', avatar: '/K.jpg', quote: '系统界面温柔又沉稳，用户在互动中更容易进入情绪探索状态。' },
+  { id: 5, name: '孙晓梅', title: '青少年成长顾问', avatar: '/3.jpg', quote: '界面设计亲切，让用户在寻求帮助时感觉更自然、更愿意表达自己。' },
+  { id: 6, name: '赵宇辰', title: '心理健康督导师', avatar: '/4.jpg', quote: '粉色基调与温暖光效结合，让整个互动页面更有治愈感。粉色基调与温暖光效结合，让整个互动页面更有治愈感。' },
 ];
 
 const Interactive = () => {
@@ -165,6 +165,8 @@ const Interactive = () => {
   const [currentComments, setCurrentComments] = useState([]);
 
   const [hasNewMessage, setHasNewMessage] = useState(true);
+  const [postSuccess, setPostSuccess] = useState('');
+  const [showToast, setShowToast] = useState(false);
 
 
   // ==========================================
@@ -286,6 +288,9 @@ const formatData = (rawList, likedIds = []) => {
     });
     if(res.ok) {
         setQuestionText('');
+        setPostSuccess('发布成功，已发布到社区');
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 2400);
         fetchAllForumData(); // 发布后立即刷新全站数据
     }
   };
@@ -357,25 +362,28 @@ const formatData = (rawList, likedIds = []) => {
   };
 
   return (
-    <ClickSpark sparkColor='#E58889'>
-      {/* 1. 背景层 */}
-      <div className="fixed inset-0 z-0">
-        <Ballpit
-          count={150}
-          gravity={0.4}
-          friction={0.996}
-          wallBounce={0.9}
-          followCursor={true}
-          colors={["#E58889", "#A5C0A5", "#4D664D"]}
-          ambientColor="#FCE7E9"
-          lightIntensity={150}
-          minSize={0.6}
-          maxSize={1.2}
-        />
-      </div>
+    <ClickSpark sparkColor="#ffffff">
+      <div className="relative min-h-screen overflow-hidden bg-transparent">
+        <div className="fixed inset-0 -z-10 pointer-events-none">
+          <Balatro
+            spinRotation={-1.5}
+            spinSpeed={5.0}
+            offset={[0.0, 0.0]}
+            color1="#F4E4D1"
+            color2="#E58889"
+            color3="#D4A5A5"
+            contrast={2.5}
+            lighting={0.3}
+            spinAmount={0.2}
+            pixelFilter={800.0}
+            spinEase={0.8}
+            isRotate={true}
+            mouseInteraction={true}
+          />
+        </div>
 
-      {/* 2. 内容层 */}
-      <div className="relative z-10 min-h-screen bg-wysa-pink/60 pt-24 px-6 md:px-12 lg:px-24 antialiased pointer-events-none overflow-y-auto">
+        {/* 2. 内容层 */}
+      <div className="relative z-10 min-h-screen bg-transparent pt-24 px-6 md:px-12 lg:px-24 antialiased pointer-events-none overflow-y-auto">
 
         {/* 顶部个人空间入口 & 消息提示 */}
         <div className="fixed top-6 right-6 md:right-12 z-40 pointer-events-auto">
@@ -402,9 +410,13 @@ const formatData = (rawList, likedIds = []) => {
           <h1 className="text-4xl md:text-5xl font-extrabold text-wysa-green mb-4 drop-shadow-sm">
             互动论坛
           </h1>
-          <p className="text-lg text-wysa-green mb-12 max-w-2xl">
-            在这里碰撞思想、释放情绪。点击球体感受物理反馈，点击卡片参与社区互动。
-          </p>
+          
+
+          {showToast && (
+            <div className="fixed top-24 left-1/2 z-40 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 rounded-3xl border border-white/20 bg-white/90 p-4 text-center text-sm font-medium text-wysa-green shadow-2xl backdrop-blur-md pointer-events-auto">
+              {postSuccess}
+            </div>
+          )}
 
         {/* ================= 模块一：最新文章 ================= */}
         <section className="mb-16">
@@ -439,10 +451,11 @@ const formatData = (rawList, likedIds = []) => {
                   </div>
                 </h2>
 
-                <div className="pointer-events-auto bg-wysa-pink/60 backdrop-blur-md rounded-3xl p-6 border border-white/50 shadow-sm">
+                <div className="pointer-events-auto bg-wysa-pink backdrop-blur-md rounded-3xl p-6 border border-white/50 shadow-sm">
                   <textarea
                     value={questionText}
                     onChange={(e) => setQuestionText(e.target.value)}
+                    
                     placeholder="此刻你在想什么？提出你的困惑..."
                     className="w-full bg-white rounded-xl p-4 text-wysa-green placeholder-wysa-green/40 outline-none focus:ring-2 focus:ring-wysa-coral/50 resize-none transition-all"
                     rows={3}
@@ -473,7 +486,7 @@ const formatData = (rawList, likedIds = []) => {
                     <div
                       key={q.id}
                       onClick={() => setSelectedQuestion(q)}
-                      className="pointer-events-auto bg-wysa-pink/80 backdrop-blur-sm rounded-2xl p-5 border border-white/30 hover:bg-white/50 transition-colors cursor-pointer group"
+                      className="pointer-events-auto bg-wysa-pink backdrop-blur-sm rounded-2xl p-5 border border-white/30 hover:bg-white/50 transition-colors cursor-pointer group"
                     >
                       <div className="flex items-center gap-3 mb-2">
                         <div className="w-8 h-8 rounded-full bg-wysa-coral text-white flex items-center justify-center text-xs font-bold">{q.avatar}</div>
@@ -501,7 +514,7 @@ const formatData = (rawList, likedIds = []) => {
 
               {/* 右侧：热度排行榜 */}
               <div className="lg:col-span-1">
-                <div className="pointer-events-auto bg-wysa-pink/60 backdrop-blur-md rounded-3xl p-6 border border-white/50 h-full">
+                <div className="pointer-events-auto bg-wysa-pink backdrop-blur-md rounded-3xl p-6 border border-white/50 h-full">
                   <h3 className="text-xl font-bold text-wysa-green mb-6 flex items-center gap-2">
                     🔥 讨论热榜
                   </h3>
@@ -532,30 +545,31 @@ const formatData = (rawList, likedIds = []) => {
           {/* ================= 模块三：专业反馈总结 ================= */}
           <section>
             <h2 className="text-2xl font-bold text-wysa-green mb-6 flex items-center gap-2">
-              <span className="text-wysa-coral">✦</span> 专家评价
+              <span className="text-wysa-coral">✦</span> 专家评价与咨询
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {FEEDBACKS.map((fb) => (
-                <div key={fb.id} className="pointer-events-auto bg-wysa-green/70 rounded-3xl p-6 shadow-lg text-white relative overflow-hidden group">
-                  <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
-                  <div className="relative z-10">
-                    <p className="text-white/90 italic mb-6 leading-relaxed">
-                      "{fb.quote}"
-                    </p>
-                    <div className="flex items-center gap-4">
-                      {/* 【修改点】：将原先的首字母替换成了 img 图片标签 */}
-                      <div className="w-16 h-16 rounded-full bg-white/20 border-2 border-white/40 shrink-0 overflow-hidden relative">
-                        <img
-                          src={fb.avatar}
-                          alt={fb.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="grow">
-                        <h4 className="font-bold text-white text-lg">{fb.name}</h4>
-                        <p className="text-sm text-white/60">{fb.title}</p>
-                      </div>
+                <div key={fb.id} className="pointer-events-auto bg-white rounded-[2rem] border border-wysa-green/10 shadow-xl overflow-hidden">
+                  <div className="relative h-28 bg-gradient-to-r from-wysa-coral/20 via-wysa-green/10 to-wysa-green/20">
+                    <div className="absolute left-1/2 -bottom-12 w-24 h-24 rounded-full border-4 border-white bg-slate-100 shadow-xl transform -translate-x-1/2 overflow-hidden">
+                      <img
+                        src={fb.avatar}
+                        alt={fb.name}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
+                  </div>
+                  <div className="pt-16 px-6 pb-6 text-center">
+                    <h4 className="text-lg font-bold text-wysa-green mb-1">{fb.name}</h4>
+                    <p className="text-sm text-wysa-green/70 mb-4">{fb.title}</p>
+                    <p className="text-sm text-gray-600 leading-7 mb-6">“{fb.quote}”</p>
+                    <button
+                      type="button"
+                      className="w-full rounded-full bg-wysa-coral py-3 text-white font-semibold transition hover:bg-wysa-green"
+                      onClick={() => alert('预约咨询功能待接入')}
+                    >
+                      预约咨询
+                    </button>
                   </div>
                 </div>
               ))}
@@ -662,6 +676,7 @@ const formatData = (rawList, likedIds = []) => {
           </div>
         </div>
       )}
+    </div>
     </ClickSpark>
   );
 };

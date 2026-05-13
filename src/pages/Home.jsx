@@ -5,11 +5,11 @@ import AOS from 'aos';
 import 'aos/dist/aos.css';
 import { useNavigate } from 'react-router-dom';
 // 自定义特效组件引入 (保持原样)
-import PixelTransition from '../PixelTransition';
-import ClickSpark from '../ClickSpark';
-import CircularText from '../CircularText';
-import ShapeBlur from '../ShapeBlur';
-import GooeyNav from '../GooeyNav';
+import PixelTransition from '../components/PixelTransition';
+import ClickSpark from '../components/ClickSpark';
+import CircularText from '../components/CircularText';
+import ShapeBlur from '../components/ShapeBlur';
+import GooeyNav from '../components/GooeyNav';
 
 // --- 导航菜单数据配置 ---
 const navItems = [
@@ -17,9 +17,9 @@ const navItems = [
   { label: '认识', href: '/about' },
   { label: '互动论坛', href: '/interactive' },
   { label: 'Agent互动', href: '/Agent' },
-  { label: '测试', href: '#' },
-  { label: '活动打卡', href: '#' },
-  { label: '个人空间', href: '#' }
+  { label: '测试', href: '/Test' },
+  { label: '活动打卡', href: '/checkin' },
+  { label: '个人空间', href: '/ProfileDev' }
 ];
 
 const Navbar = ({ onLoginClick }) => {

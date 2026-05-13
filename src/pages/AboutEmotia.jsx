@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import ScrollVelocity from '../ScrollVelocity';
-import ClickSpark from '../ClickSpark';
+import ClickSpark from '../components/ClickSpark';
+import ScrollVelocity from '../components/ScrollVelocity';
 
 const topicsData = [
   { id: 1, title: "CBT", subtitle: "COGNITIVE BEHAVIORAL THERAPY", summary: "捕捉自动思维，打破焦虑循环。在科学的框架下，重构你的情绪主导权。", image: "/about1.jpg" ,pos: "object-[50%_80%]"},
@@ -103,16 +103,20 @@ const AboutEmotia = () => {
               <div className="mb-20 text-center px-6">
                 <h4 className="text-wysa-coral text-sm font-bold tracking-[0.4em] mb-12 uppercase">Emotia Insights</h4>
 
-                {/* 这里使用 ScrollVelocity 替换了原本的静态 <p> 标签 */}
-                <div className="py-6 border-y border-wysa-pink bg-wysa-pink">
+                <div className="py-6 border-y border-wysa-pink bg-wysa-pink overflow-hidden">
                   <ScrollVelocity
-                    texts={[
-                      "在这里 重新审视每一份情绪的重量",
-                      "RE-EXAMINE THE WEIGHT OF EVERY EMOTION"
-                    ]}
-                    velocity={60}
-                    className="text-wysa-green font-medium text-5xl tracking-tighter"
-                    numCopies={8}
+                    texts={['在这里 重新审视每一份情绪的重量']}
+                    velocity={80}
+                    numCopies={4}
+                    parallaxClassName="py-0"
+                    scrollerClassName="text-wysa-green font-medium !text-3xl md:!text-5xl tracking-tighter"
+                  />
+                  <ScrollVelocity
+                    texts={['RE-EXAMINE THE WEIGHT OF EVERY EMOTION']}
+                    velocity={-50}
+                    numCopies={5}
+                    parallaxClassName="py-0"
+                    scrollerClassName="text-wysa-green/60 !text-base md:!text-xl tracking-widest font-normal"
                   />
                 </div>
 

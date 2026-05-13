@@ -1,15 +1,15 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import GooeyNav from '../GooeyNav';
+import GooeyNav from './GooeyNav';
 
 const navItems = [
   { label: '首页', href: '/' },
   { label: '认识', href: '/about' },
   { label: '互动论坛', href: '/interactive' },
-  { label: 'Agent互动', href: '/Agent' },
+  { label: 'Agent互动', href: '/agent' },
   { label: '测试', href: '/Test' },
-  { label: '活动打卡', href: '#' },
-  { label: '个人空间', href: '#' }
+  { label: '活动打卡', href: '/checkin' },
+  { label: '个人空间', href: '/ProfileDev' }
 ];
 
 const Navbar = ({ onLoginClick, user, onLogout }) => {
@@ -62,7 +62,7 @@ const Navbar = ({ onLoginClick, user, onLogout }) => {
 
               {/* 功能操作区 */}
               <button
-                onClick={() => navigate('/profile')}
+                onClick={() => navigate('/ProfileDev')}
                 className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-wysa-green transition-colors"
               >
                 个人空间

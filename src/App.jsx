@@ -52,6 +52,8 @@ function App() {
         <Route path="/Test" element={<Test />} />
         <Route path="/checkin" element={<CheckInTest />} />
         <Route path="/dev-me" element={<ProfileDev />} />
+        <Route path="/ProfileDev" element={<ProfileDev />} />
+        <Route path="/profile" element={<ProfileDev />} />
       </Routes>
 
       <AuthModal

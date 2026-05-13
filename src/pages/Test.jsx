@@ -1,9 +1,12 @@
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motion';
-import ShapeBlur from '../ShapeBlur';
-import ClickSpark from '../ClickSpark';
-import ScrollReveal from '../ScrollReveal';
+import ShapeBlur from '../components/ShapeBlur';
+import ClickSpark from '../components/ClickSpark';
+
 import { useNavigate } from 'react-router-dom';
+
+// 引入 TargetCursor
+import TargetCursor from '../components/TargetCursor'; // 确保路径正确
 
 const API_BASE = "http://localhost:8000/api";
 
@@ -99,6 +102,7 @@ const PsychRadarChart = ({ data, size = 300 }) => {
         points={dataPoints}
         fill="rgba(229, 136, 137, 0.4)"
         stroke="#E58889"
+
         strokeWidth="3"
         strokeLinejoin="round"
       />
@@ -132,8 +136,13 @@ export default function TestPage() {
   const [answers, setAnswers] = useState([]);
   const [result, setResult] = useState(null);
 
+  const scrollContainerRef = useRef(null);
+  const questionsCache = useRef(null);
+
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({ top: 0, behavior: 'instant' });
+    }
   }, [currentView, activeTab]);
 
   useEffect(() => {
@@ -158,7 +167,7 @@ export default function TestPage() {
   }, [testList, activeTab, searchQuery]);
 
   // 🚀 核心逻辑：定义图标匹配逻辑
-  // 采用“关键词包含”匹配法，防止后端返回的字符串由于空格、换行导致不完全相等
+  // 采用"关键词包含"匹配法，防止后端返回的字符串由于空格、换行导致不完全相等
   const getIconByCategory = (tags) => {
     const categoryName = tags?.[0] || "";
     if (!categoryName) return "📝";
@@ -177,16 +186,31 @@ export default function TestPage() {
     return "📝"; // 默认图标
   };
 
+  const isPositiveResult = (result) => {
+    if (!result || !result.level) return true;
+    const negativeKeywords = ['重度', '严重', '中度', '高风险', '异常', '较差', '低下', '障碍'];
+    return !negativeKeywords.some(kw => result.level.includes(kw));
+  };
+
   const goToIntro = (test) => {
     setSelectedTest(test);
     setCurrentView('intro');
+    // 后台预加载题目，点击"开始测试"时无需等待
+    questionsCache.current = null;
+    fetch(`${API_BASE}/tests/${test.id}/questions`)
+      .then(res => res.json())
+      .then(data => { questionsCache.current = data; })
+      .catch(() => {});
   };
 
   const goToQuiz = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/tests/${selectedTest.id}/questions`);
-      const data = await res.json();
+      let data = questionsCache.current;
+      if (!data) {
+        const res = await fetch(`${API_BASE}/tests/${selectedTest.id}/questions`);
+        data = await res.json();
+      }
       setQuestions(data);
       setAnswers([]);
       setCurrentQIndex(0);
@@ -241,7 +265,13 @@ export default function TestPage() {
   const pageVariants = { initial: { opacity: 0, y: 20 }, in: { opacity: 1, y: 0 }, out: { opacity: 0, y: -20 } };
 
   return (
-    <div className="min-h-screen bg-wysa-pink text-wysa-green font-sans pt-30 pb-12 overflow-x-hidden relative">
+    <div
+      ref={scrollContainerRef}
+      className="h-screen bg-wysa-pink text-wysa-green font-sans pt-30 pb-12 overflow-y-auto overflow-x-hidden relative"
+    >
+      {/* TargetCursor 应用在整个页面，并指定其目标 */}
+      <TargetCursor targetSelector=".cursor-target" />
+
       <AnimatePresence>
         {loading && (
           <motion.div
@@ -262,7 +292,7 @@ export default function TestPage() {
         )}
       </AnimatePresence>
 
-      <ClickSpark sparkColor="#E58889" sparkCount={10} sparkSize={12} duration={350}>
+      <ClickSpark sparkColor="#567357" sparkCount={10} sparkSize={12} duration={350}>
         <div className="max-w-6xl mx-auto px-6 relative z-10">
           <AnimatePresence mode="wait">
 
@@ -316,7 +346,6 @@ export default function TestPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
                   {displayTests.length > 0 ? (
                     displayTests.map(test => {
-                      // 🚀 使用增强的匹配逻辑
                       const displayIcon = getIconByCategory(test.tags);
 
                       return (
@@ -354,37 +383,49 @@ export default function TestPage() {
 
             {/* --- 视图 2: 介绍页 --- */}
             {currentView === 'intro' && selectedTest && (
-              <motion.div key="intro" variants={pageVariants} initial="initial" animate="in" exit="out" className="max-w-3xl mx-auto py-12">
-                 <div className="bg-white rounded-[3.5rem] p-12 shadow-2xl text-center relative border border-white">
-                   <div className="text-8xl mb-6 drop-shadow-sm">{getIconByCategory(selectedTest.tags)}</div>
-                   <h1 className="text-4xl font-extrabold mb-6 text-wysa-green">{selectedTest.title}</h1>
-
-                   <div className="flex justify-center gap-4 mb-8">
+              <motion.div
+                key="intro"
+                variants={pageVariants}
+                initial="initial" animate="in" exit="out"
+                className="max-w-3xl mx-auto flex flex-col"
+                style={{ height: 'calc(100vh - 130px)' }}
+              >
+                <div className="bg-white rounded-[3.5rem] p-4 md:p-8 shadow-2xl text-center relative border border-white flex flex-col flex-1 min-h-0">
+                  {/* ---- 顶部固定区 ---- */}
+                  <div className="shrink-0">
+                    <div className="text-4xl md:text-5xl mb-2 drop-shadow-sm">{getIconByCategory(selectedTest.tags)}</div>
+                    <h1 className="text-2xl md:text-3xl font-extrabold mb-2 text-wysa-green">{selectedTest.title}</h1>
+                    <div className="flex justify-center gap-4 mb-4">
                       <span className="bg-gray-50 border border-gray-100 px-5 py-2 rounded-xl text-sm font-bold text-gray-500 shadow-sm">
                         🏷️ 测评代号: {selectedTest.abbreviation || '标准版'}
                       </span>
                       <span className="bg-gray-50 border border-gray-100 px-5 py-2 rounded-xl text-sm font-bold text-gray-500 shadow-sm">
                         ⏱️ 预计耗时: {selectedTest.duration_time || '5-10分钟'}
                       </span>
-                   </div>
+                    </div>
+                  </div>
 
-                   <div className="bg-gradient-to-br from-gray-50 to-white border border-gray-100 p-8 rounded-[2rem] text-left mb-10 shadow-inner">
-                     <p className="text-lg text-wysa-green/80 leading-loose font-medium">
-                       <span className="text-2xl font-bold text-wysa-coral block mb-3">关于此项测评</span>
-                       {selectedTest.description}
-                     </p>
-                   </div>
+                  {/* ---- 中间可滚动描述区 ---- */}
+                  <div
+                    className="flex-1 min-h-0 overflow-y-auto bg-gradient-to-br from-gray-50 to-white border border-gray-100 p-6 rounded-[2rem] text-left mb-4 shadow-inner"
+                  >
+                    <h3 className="text-2xl font-bold text-wysa-coral mb-3">关于此项测评</h3>
+                    <p className="text-lg text-wysa-green/80 leading-loose font-medium">{selectedTest.description}</p>
+                  </div>
 
-                   <button
-                    onClick={goToQuiz}
-                    className="bg-wysa-coral text-white px-20 py-5 rounded-full font-bold text-xl shadow-lg shadow-wysa-coral/30 hover:bg-[#e67576] hover:scale-105 active:scale-95 transition-all duration-300 w-full md:w-auto"
-                   >
-                     准备好了，立刻开始测试
-                   </button>
-                   <button onClick={goHome} className="block mx-auto mt-6 text-wysa-green/40 hover:text-wysa-coral font-medium transition-colors">
-                     ← 放弃并返回列表
-                   </button>
-                 </div>
+                  {/* ---- 底部按钮区 ---- */}
+                  <div className="shrink-0">
+                    <button
+                      onClick={goToQuiz}
+                      className="bg-wysa-coral text-white px-16 py-4 rounded-full font-bold text-lg shadow-lg shadow-wysa-coral/30 hover:bg-[#e67576] hover:scale-105 active:scale-95 transition-all duration-300 w-full md:w-auto cursor-target"
+                    >
+                      准备好了，立刻开始测试
+                    </button>
+                    <button onClick={goHome} className="block mx-auto mt-3 text-wysa-green/40 hover:text-wysa-coral font-medium transition-colors cursor-target">
+                      ← 放弃并返回列表
+                    </button>
+                  </div>
+                </div>
               </motion.div>
             )}
 
@@ -405,7 +446,11 @@ export default function TestPage() {
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     {questions[currentQIndex].options.map((opt, idx) => (
-                      <button key={idx} onClick={() => handleAnswer(opt.score)} className="bg-gray-50 hover:bg-white text-wysa-green hover:text-wysa-coral p-6 rounded-[2rem] flex items-center justify-center gap-2 border-2 border-transparent hover:border-wysa-coral shadow-sm hover:shadow-md transition-all active:scale-95 group font-bold text-lg">
+                      <button
+                        key={idx}
+                        onClick={() => handleAnswer(opt.score)}
+                        className="bg-gray-50 hover:bg-white text-wysa-coral hover:text-wysa-green p-6 rounded-[2rem] flex items-center justify-center gap-2 border-2 border-transparent hover:border-wysa-green shadow-sm hover:shadow-md transition-all active:scale-95 group font-bold text-lg cursor-target" // 添加 cursor-target 类
+                      >
                         {opt.label}
                       </button>
                     ))}
@@ -420,7 +465,7 @@ export default function TestPage() {
                 <div className="bg-white rounded-[3.5rem] p-10 md:p-14 shadow-2xl relative border border-white">
                   <h1 className="text-xl font-bold text-gray-400 mb-8 tracking-widest">测评专属分析报告</h1>
 
-                  <div className={`flex flex-col ${result.radar_data.length >= 3 ? 'md:flex-row md:items-center' : 'items-center'} gap-12 mb-10`}>
+                  <div className="flex flex-col md:flex-row md:items-center gap-12 mb-10">
                     <div className="flex-1 text-left">
                       <div className="flex items-baseline gap-3 mb-4">
                         <div className="text-8xl md:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-br from-wysa-coral to-[#ff8c8e]">{result.score}</div>
@@ -431,33 +476,42 @@ export default function TestPage() {
                         当前状态：{result.level}
                       </div>
 
-                      <div className="text-gray-500 leading-relaxed text-left bg-gray-50 p-8 rounded-[2rem] border-l-8 border-wysa-coral shadow-inner">
-                        <p className="mb-4 font-bold text-wysa-green text-lg flex items-center gap-2">
-                          <span className="text-2xl">📋</span> 专业解析：
+                      <div className="text-left relative isolate overflow-hidden rounded-[2rem] p-8 bg-[#FFF5F3]">
+                        <div className="absolute inset-0 z-0 pointer-events-none">
+                          <ShapeBlur variation={0} pixelRatioProp={2} shapeSize={2.0} roundness={0.35} borderSize={0.03} circleSize={0.3} color="#FFFFFF" />
+                        </div>
+                        <p className="mb-4 font-bold text-wysa-coral text-lg relative z-10">
+                          专业解析：
                         </p>
-                        <div className="text-base space-y-4">
-                          根据得分，您的整体水平被评估为 <span className="font-extrabold text-wysa-green">“{result.level}”</span>。
+                        <div className="text-base space-y-4 text-wysa-green/80 leading-relaxed relative z-10">
+                          根据得分，您的整体水平被评估为 <span className="font-extrabold text-wysa-coral">{result.level}</span>。
                           <br />
                           {result.professional_analysis}
                         </div>
                       </div>
                     </div>
 
-                    {result.radar_data && result.radar_data.length >= 3 ? (
-                      <div className="w-80 h-80 flex items-center justify-center bg-gray-50 rounded-full border border-gray-100 p-2 shadow-inner">
+                    <div className="w-80 h-80 flex-shrink-0 flex items-center justify-center bg-gray-50 rounded-full border border-gray-100 p-2 shadow-inner overflow-hidden">
+                      {result.radar_data && result.radar_data.length >= 3 ? (
                         <PsychRadarChart data={result.radar_data} size={300} />
-                      </div>
-                    ) : null}
+                      ) : (
+                        <img
+                          src={isPositiveResult(result) ? '/2.jpg' : '/4.jpg'}
+                          alt="result mood"
+                          className="w-full h-full object-cover rounded-full"
+                        />
+                      )}
+                    </div>
                   </div>
 
                   <hr className="my-12 border-gray-100" />
 
                   <div className="text-left mb-8">
-                     <h2 className="text-2xl font-extrabold text-wysa-green mb-2">💡 基于结果的专属行动建议</h2>
+                     <h2 className="text-2xl font-extrabold text-wysa-green mb-2"> 基于结果的专属行动建议</h2>
                      <p className="text-gray-400 mb-8 font-medium">量表只是工具，行动才能带来改变。我们为您准备了以下支持：</p>
 
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div onClick={() => navigate('/agent')} className="group cursor-pointer bg-white border-2 border-gray-100 hover:border-wysa-coral hover:bg-wysa-coral/5 transition-all duration-300 p-8 rounded-[2.5rem] shadow-sm hover:shadow-xl hover:-translate-y-1">
+                        <div onClick={() => navigate('/agent')} className="group cursor-pointer bg-white border-2 border-gray-100 hover:border-wysa-coral hover:bg-wysa-coral/5 transition-all duration-300 p-8 rounded-[2.5rem] shadow-sm hover:shadow-xl hover:-translate-y-1 cursor-target"> {/* 添加 cursor-target 类 */}
                           <div className="flex items-start gap-5">
                             <div className="text-5xl group-hover:scale-110 transition-transform origin-top-left">👾</div>
                             <div>
@@ -470,7 +524,7 @@ export default function TestPage() {
                           </div>
                         </div>
 
-                        <div onClick={() => navigate('/interactive')} className="group cursor-pointer bg-white border-2 border-gray-100 hover:border-emerald-500 hover:bg-emerald-50 transition-all duration-300 p-8 rounded-[2.5rem] shadow-sm hover:shadow-xl hover:-translate-y-1">
+                        <div onClick={() => navigate('/interactive')} className="group cursor-pointer bg-white border-2 border-gray-100 hover:border-emerald-500 hover:bg-emerald-50 transition-all duration-300 p-8 rounded-[2.5rem] shadow-sm hover:shadow-xl hover:-translate-y-1 cursor-target"> {/* 添加 cursor-target 类 */}
                           <div className="flex items-start gap-5">
                             <div className="text-5xl group-hover:scale-110 transition-transform origin-top-left">🫂</div>
                             <div>
@@ -485,7 +539,7 @@ export default function TestPage() {
                      </div>
                   </div>
 
-                  <button onClick={goHome} className="mt-8 text-gray-400 hover:text-wysa-green font-bold transition-colors bg-gray-50 hover:bg-gray-100 px-8 py-3 rounded-full">
+                  <button onClick={goHome} className="mt-8 text-gray-400 hover:text-wysa-green font-bold transition-colors bg-gray-50 hover:bg-gray-100 px-8 py-3 rounded-full cursor-target"> {/* 添加 cursor-target 类 */}
                     ← 返回测评大厅
                   </button>
                 </div>
