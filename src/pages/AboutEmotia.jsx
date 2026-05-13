@@ -38,10 +38,10 @@ const AboutEmotia = () => {
   return (
     /* 只在这里加入了 ClickSpark 特效包裹 */
     <ClickSpark sparkColor='#E58889'>
-      <div className="min-h-screen bg-wysa-pink font-extrabold antialiased text-wysa-green pt-24 md:pt-32">
+      <div className="min-h-screen bg-wysa-pink font-extrabold antialiased text-wysa-green pt-28 md:pt-36">
 
         {/* --- 第一屏：Hero 轮播 --- */}
-        <section className="relative h-[calc(100vh-8rem)] w-full flex flex-col items-center px-6 overflow-hidden">
+        <section className="relative h-[calc(100vh-7rem)] w-full flex flex-col items-center px-6 overflow-hidden">
           <div className="relative w-full max-w-[1300px] h-[70vh] group select-none">
             <AnimatePresence initial={false} custom={direction} mode="popLayout">
               <motion.div

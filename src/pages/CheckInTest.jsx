@@ -116,31 +116,30 @@ const CheckInTest = () => {
   if (!userId) return <div style={{padding: '50px', textAlign:'center', color: '#fff'}}>请先登录！</div>;
 
   return (
-    <div style={{ backgroundColor: '#1a1a2e', minHeight: '100vh', padding: '40px 20px', color: '#eaeaea', fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ backgroundColor: '#F9F0ED', minHeight: '100vh', padding: '100px 20px 40px', color: '#333', fontFamily: 'system-ui, sans-serif' }}>
 
       <style>{`
-        .emoji-btn { font-size: 45px; cursor: pointer; transition: all 0.2s; filter: grayscale(100%); opacity: 0.6; }
+        .emoji-btn { font-size: 45px; cursor: pointer; transition: all 0.2s; filter: grayscale(30%); opacity: 0.7; }
         .emoji-btn:hover { transform: scale(1.2); filter: grayscale(0%); opacity: 1; }
-        .emoji-btn.active { transform: scale(1.2); filter: grayscale(0%); opacity: 1; text-shadow: 0 0 15px rgba(255,255,255,0.8); }
+        .emoji-btn.active { transform: scale(1.2); filter: grayscale(0%); opacity: 1; text-shadow: 0 0 15px rgba(0,0,0,0.15); }
         .emoji-btn.disabled { cursor: not-allowed; }
         .emoji-btn.disabled:hover { transform: scale(1); }
-        
+
         .confirm-btn {
           margin-top: 15px; padding: 10px 30px; font-size: 16px; font-weight: bold; color: #fff;
           border: none; border-radius: 8px; transition: all 0.3s;
         }
-        .confirm-btn.ready { background-color: #e94560; cursor: pointer; box-shadow: 0 4px 10px rgba(233,69,96,0.4); }
-        .confirm-btn.ready:hover { background-color: #d83a54; transform: translateY(-2px); }
-        .confirm-btn.disabled { background-color: #555; cursor: not-allowed; color: #aaa; }
+        .confirm-btn.ready { background-color: #E58889; cursor: pointer; box-shadow: 0 4px 10px rgba(229,136,137,0.4); }
+        .confirm-btn.ready:hover { background-color: #d07a7b; transform: translateY(-2px); }
+        .confirm-btn.disabled { background-color: #ccc; cursor: not-allowed; color: #999; }
 
-        .quest-card { background: #16213e; border: 2px solid #0f3460; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 8px 16px rgba(0,0,0,0.4); }
-        .quest-title { color: #e94560; margin-top: 0; display: flex; alignItems: center; border-bottom: 1px solid #0f3460; padding-bottom: 10px; }
-        
-        /* 修改了这里的完成状态样式：去掉了删除线，保留了绿边框和稍微变暗的视觉反馈 */
-        .task-item { background: #1f2a48; margin: 10px 0; padding: 15px; border-radius: 8px; display: flex; align-items: center; border-left: 4px solid #e94560; transition: all 0.3s; }
-        .task-item.completed { border-left-color: #4caf50 !important; opacity: 0.85; }
-        
-        input[type="checkbox"] { width: 20px; height: 20px; margin-right: 15px; accent-color: #4caf50; cursor: pointer; }
+        .quest-card { background: #fff; border: 1px solid #e8e3db; border-radius: 16px; padding: 24px; margin-bottom: 25px; box-shadow: 0 4px 16px rgba(0,0,0,0.04); }
+        .quest-title { color: #567357; margin-top: 0; display: flex; alignItems: center; border-bottom: 1px solid #f0ebe3; padding-bottom: 10px; font-weight: 700; }
+
+        .task-item { background: #faf8f5; margin: 10px 0; padding: 15px; border-radius: 8px; display: flex; align-items: center; border-left: 4px solid #E58889; transition: all 0.3s; }
+        .task-item.completed { border-left-color: #567357 !important; opacity: 0.75; }
+
+        input[type="checkbox"] { width: 20px; height: 20px; margin-right: 15px; accent-color: #567357; cursor: pointer; }
       `}</style>
 
       <div style={{ maxWidth: '600px', margin: '0 auto' }}>
@@ -148,7 +147,7 @@ const CheckInTest = () => {
         {/* ================= 模块 1：情绪打卡面板 ================= */}
         <div className="quest-card" style={{ textAlign: 'center' }}>
           <h3 className="quest-title">🌡️ 今日能量检测</h3>
-          <p style={{ color: '#aaa', fontSize: '14px' }}>
+          <p style={{ color: '#666', fontSize: '14px' }}>
             {hasCheckedIn ? "✅ 今日已完成检测，干得漂亮！" : "指挥官，请评估您今天的精神状态（每日限1次）："}
           </p>
 
@@ -168,7 +167,7 @@ const CheckInTest = () => {
                 >
                   {item.face}
                 </span>
-                <span style={{ fontSize: '12px', marginTop: '5px', color: selectedScore == item.score ? '#fff' : '#666' }}>
+                <span style={{ fontSize: '12px', marginTop: '5px', color: selectedScore == item.score ? '#333' : '#999' }}>
                   {item.label}
                 </span>
               </div>
@@ -188,14 +187,14 @@ const CheckInTest = () => {
 
         {/* ================= 模块 2：游戏化任务看板 ================= */}
         <div className="quest-card">
-          <h3 className="quest-title" style={{ color: '#f39c12', borderColor: '#f39c12' }}>📜 每日日常任务</h3>
+          <h3 className="quest-title" style={{ color: '#E58889', borderColor: '#E58889' }}>📜 每日日常任务</h3>
 
           <div className={`task-item ${hasCheckedIn ? 'completed' : ''}`}>
             {/* 系统自动判定：只读 */}
             <input type="checkbox" checked={hasCheckedIn} readOnly />
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 'bold' }}>完成今日 Emoji 心情打卡</div>
-              <div style={{ fontSize: '12px', color: '#888' }}>主线任务 / 奖励：解锁后续任务</div>
+              <div style={{ fontSize: '12px', color: '#999' }}>主线任务 / 奖励：解锁后续任务</div>
             </div>
           </div>
 
@@ -206,7 +205,7 @@ const CheckInTest = () => {
               <input type="checkbox" checked={task.is_completed} onChange={() => handleToggleTask(task.id, task.is_completed)} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 'bold' }}>{task.task_content}</div>
-                <div style={{ fontSize: '12px', color: '#888' }}>
+                <div style={{ fontSize: '12px', color: '#999' }}>
                   🌱 行为激活任务 / 奖励：+5 积极能量
                 </div>
               </div>
@@ -220,7 +219,7 @@ const CheckInTest = () => {
               <input type="checkbox" checked={task.is_completed} onChange={() => handleToggleTask(task.id, task.is_completed)} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 'bold' }}>{task.task_content}</div>
-                <div style={{ fontSize: '12px', color: '#888' }}>
+                <div style={{ fontSize: '12px', color: '#999' }}>
                   🤖 Agent 专属定制 / 奖励：+10 治愈值
                 </div>
               </div>
@@ -229,14 +228,14 @@ const CheckInTest = () => {
 
           {/* 渲染：系统动态引导任务 (如前往咨询室、存入阳光) */}
           {guideTasks.map((task, idx) => (
-            <div className={`task-item ${task.completed ? 'completed' : ''}`} key={idx} style={{ borderLeftColor: '#f39c12' }}>
+            <div className={`task-item ${task.completed ? 'completed' : ''}`} key={idx} style={{ borderLeftColor: '#E58889' }}>
               {/* 系统自动判定：只读 */}
               <input type="checkbox" checked={task.completed} readOnly />
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 'bold', color: '#f39c12' }}>{task.content}</div>
-                <div style={{ fontSize: '12px', color: '#888' }}>
+                <div style={{ fontWeight: 'bold', color: '#E58889' }}>{task.content}</div>
+                <div style={{ fontSize: '12px', color: '#999' }}>
                   分支任务 / {task.content.includes("Agent") && !task.completed ?
-                  <button onClick={()=>window.location.href='/agent'} style={{background:'#e94560', color:'#fff', border:'none', borderRadius:'4px', cursor:'pointer', padding:'2px 8px'}}>立即前往</button>
+                  <button onClick={()=>window.location.href='/agent'} style={{background:'#E58889', color:'#fff', border:'none', borderRadius:'4px', cursor:'pointer', padding:'2px 8px'}}>立即前往</button>
                   : '请在下方或指定页面完成'}
                 </div>
               </div>
@@ -246,9 +245,9 @@ const CheckInTest = () => {
         </div>
 
         {/* ================= 模块 3：常驻阳光储蓄罐 ================= */}
-        <div className="quest-card" style={{ borderColor: '#4caf50' }}>
-          <h3 className="quest-title" style={{ color: '#4caf50', borderColor: '#4caf50' }}>🌟 阳光储蓄罐</h3>
-          <p style={{ color: '#aaa', fontSize: '14px' }}>抓住转瞬即逝的快乐。哪怕是一杯好喝的奶茶，也可以存进来！</p>
+        <div className="quest-card" style={{ borderColor: '#567357' }}>
+          <h3 className="quest-title" style={{ color: '#567357', borderColor: '#567357' }}>🌟 阳光储蓄罐</h3>
+          <p style={{ color: '#666', fontSize: '14px' }}>抓住转瞬即逝的快乐。哪怕是一杯好喝的奶茶，也可以存进来！</p>
 
           <div style={{ display: 'flex', marginTop: '15px' }}>
             <input
@@ -259,7 +258,7 @@ const CheckInTest = () => {
             />
             <button
               onClick={handleSunshineSubmit}
-              style={{ padding: '0 25px', background: '#4caf50', color: '#fff', border: 'none', borderRadius: '0 8px 8px 0', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px' }}
+              style={{ padding: '0 25px', background: '#567357', color: '#fff', border: 'none', borderRadius: '0 8px 8px 0', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px' }}
             >
               存入
             </button>
