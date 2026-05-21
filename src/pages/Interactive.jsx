@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import ClickSpark from '../components/ClickSpark';
 import Balatro from '../components/Balatro';
 import CircularGallery from '../components/CircularGallery';
@@ -141,12 +142,14 @@ const FEEDBACKS = [
   { id: 1, name: 'Dr. Sarah', title: '临床心理学家', avatar: '/M.jpeg', quote: '这个平台通过极具创意的互动方式，打破了传统心理宣泄的壁垒，让情绪的流动变得具象化。' },
   { id: 2, name: '李明哲', title: '资深心理咨询师', avatar: '/N.jpg', quote: '球体的碰撞非常解压，这种结合了物理反馈的视觉疗法，对缓解轻度焦虑有显著效果。' },
   { id: 3, name: 'Prof. Anderson', title: '行为科学研究员', avatar: '/I.jpg', quote: '社区氛围极其温暖。用户在互动中既能保持匿名安全感，又能感受到连接的真实感。' },
-  { id: 4, name: '周菲逸', title: '婚姻家庭咨询师', avatar: '/K.jpg', quote: '系统界面温柔又沉稳，用户在互动中更容易进入情绪探索状态。' },
-  { id: 5, name: '孙晓梅', title: '青少年成长顾问', avatar: '/3.jpg', quote: '界面设计亲切，让用户在寻求帮助时感觉更自然、更愿意表达自己。' },
-  { id: 6, name: '赵宇辰', title: '心理健康督导师', avatar: '/4.jpg', quote: '粉色基调与温暖光效结合，让整个互动页面更有治愈感。粉色基调与温暖光效结合，让整个互动页面更有治愈感。' },
+  { id: 4, name: '周保身', title: '婚姻家庭咨询师', avatar: '/K.jpg', quote: '系统界面温柔又沉稳，用户在互动中更容易进入情绪探索状态。' },
+  { id: 5, name: '李龙馥', title: '青少年成长顾问', avatar: '/L.png', quote: '界面设计亲切，让用户在寻求帮助时感觉更自然、更愿意表达自己。' },
+  { id: 6, name: '张凌赫', title: '心理健康督导师', avatar: '/Q.png', quote: '粉色基调与温暖光效结合，让整个互动页面更有治愈感。粉色基调与温暖光效结合，让整个互动页面更有治愈感。' },
 ];
 
 const Interactive = () => {
+  const [searchParams] = useSearchParams();
+
   // ==========================================
   // 2. 状态管理
   // ==========================================
@@ -258,6 +261,36 @@ const formatData = (rawList, likedIds = []) => {
   useEffect(() => {
     fetchAllForumData();
   }, []);
+
+  // 从Home页热门讨论跳转过来的：打开对应帖子详情
+  useEffect(() => {
+    const postId = searchParams.get('postId');
+    if (postId) {
+      const allPosts = [...latestQuestions, ...hotQuestions];
+      const targetPost = allPosts.find(p => p.id === Number(postId));
+      if (targetPost) {
+        setSelectedQuestion(targetPost);
+      } else {
+        // 如果在列表中找不到，直接从API请求
+        fetch(`http://localhost:8000/api/forum/posts/${postId}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data) {
+              setSelectedQuestion({
+                id: data.id,
+                author: data.profiles?.username || "神秘用户",
+                avatar: (data.profiles?.username || "匿")[0],
+                content: data.content,
+                likes: data.forum_likes?.[0]?.count || 0,
+                commentsCount: data.forum_answers?.[0]?.count || 0,
+                hotScore: (data.hot_score || 0) * 10,
+              });
+            }
+          })
+          .catch(err => console.error('加载帖子失败', err));
+      }
+    }
+  }, [latestQuestions, hotQuestions, searchParams]);
 
   // 🚀 详情加载：点击问题时加载评论
   useEffect(() => {

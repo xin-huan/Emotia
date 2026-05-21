@@ -58,7 +58,12 @@ const Navbar = ({ onLoginClick }) => {
 // ==========================================
 // 2. 首屏欢迎区组件 (Hero)
 // ==========================================
-const HeroSection = () => (
+const HeroSection = () => {
+  const scrollToCBT = () => {
+    document.getElementById('cbt-section')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  return (
   <section className="pt-32 pb-20 px-12 md:px-24 w-full flex items-center justify-between min-h-[90vh]">
     <div className="w-1/2 pr-16 text-left">
       <h1 className="font-black mb-10 tracking-tighter text-wysa-green">
@@ -66,11 +71,11 @@ const HeroSection = () => (
         <span className="text-6xl lg:text-9xl border-b-[10px] border-wysa-coral pb-2 inline-block">Emotia</span>
       </h1>
       <div className="space-y-6 text-xl text-gray-700 mb-14 leading-relaxed text-left">
-        <p className="text-3xl font-bold text-wysa-green">你的随身“心理急救箱”，随时随地化解情绪危机</p>
-        <p className="text-xl">告别“患者”标签，在AI陪伴与游戏化体验中，完成每一次自我成长</p>
+        <p className="text-3xl font-bold text-wysa-green">你的随身"心理急救箱"，随时随地化解情绪危机</p>
+        <p className="text-xl">告别"患者"标签，在AI陪伴与游戏化体验中，完成每一次自我成长</p>
       </div>
       <div className="flex items-center justify-start space-x-4">
-        <button className="bg-wysa-coral text-white border border-wysa-coral rounded-full px-10 py-3.5 text-xl font-semibold hover:opacity-90 transition flex items-center space-x-2 shadow-lg">
+        <button onClick={scrollToCBT} className="bg-wysa-coral text-white border border-wysa-coral rounded-full px-10 py-3.5 text-xl font-semibold hover:opacity-90 transition flex items-center space-x-2 shadow-lg cursor-pointer">
           <span>了解更多</span><span>→</span>
         </button>
       </div>
@@ -83,6 +88,7 @@ const HeroSection = () => (
     </div>
   </section>
 );
+};
 
 // ==========================================
 // 3. CBT 介绍组件 (What is CBT)
@@ -91,7 +97,7 @@ const CbtSection = () => {
   const navigate = useNavigate(); // 加入跳转钩子
 
   return (
-    <section className="pt-12 pb-16 px-12 md:px-24 w-full border-t-2 border-dashed border-gray-100 bg-wysa-pink relative overflow-hidden">
+    <section id="cbt-section" className="pt-12 pb-16 px-12 md:px-24 w-full border-t-2 border-dashed border-gray-100 bg-wysa-pink relative overflow-hidden">
       <div className="absolute -right-10 -bottom-20 text-[18rem] font-black text-white/50 pointer-events-none select-none z-0 leading-none">CBT</div>
       <h2 className="text-6xl font-extrabold mb-8 text-left text-wysa-green relative z-10 tracking-tight">what is CBT</h2>
       <div className="relative w-full max-w-5xl mx-auto h-[540px] z-10">
@@ -105,7 +111,7 @@ const CbtSection = () => {
             </div>
           </div>
           <div className="absolute -right-64 top-16 w-60 bg-white p-4 border border-gray-100 rounded-2xl shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none text-left">
-            <p className="text-sm text-gray-600 leading-relaxed">在认知行为疗法（CBT）过程中，认知指个体对自身、他人以及世界的看法和解释方式。人们往往会形成自动化思维，例如“我做不好这件事”。在CBT中，核心是识别这些非理性思维模式，将其转化为客观平衡的思考方式。</p>
+            <p className="text-sm text-gray-600 leading-relaxed">在认知行为疗法（CBT）过程中，认知指个体对自身、他人以及世界的看法和解释方式。人们往往会形成自动化思维，例如"我做不好这件事"。在CBT中，核心是识别这些非理性思维模式，将其转化为客观平衡的思考方式。</p>
             <div className="absolute left-[-6px] top-6 w-3 h-3 bg-white border-l border-b border-gray-100 rotate-45"></div>
           </div>
         </div>
@@ -133,7 +139,7 @@ const CbtSection = () => {
             </div>
           </div>
           <div className="absolute -left-64 top-16 w-60 bg-white p-4 border border-gray-100 rounded-2xl shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none text-left">
-            <p className="text-xg text-gray-600 leading-relaxed">行为是个体在认知与情感驱动下的外在行动，也是干预的重要入口。负性认知会导致回避等不适应行为，CBT强调通过“行为激活”等方法，鼓励获取新经验反馈，建立更健康的认知与情绪循环。</p>
+            <p className="text-xg text-gray-600 leading-relaxed">行为是个体在认知与情感驱动下的外在行动，也是干预的重要入口。负性认知会导致回避等不适应行为，CBT强调通过"行为激活"等方法，鼓励获取新经验反馈，建立更健康的认知与情绪循环。</p>
             <div className="absolute right-[-6px] top-6 w-3 h-3 bg-white border-l border-b border-gray-100 rotate-45"></div>
           </div>
         </div>
@@ -366,6 +372,8 @@ const InteractiveFeatureCard = ({ items }) => {
 // 6. 功能总结卡片 (Features)
 // ==========================================
 const FeaturesSection = () => {
+  const navigate = useNavigate();
+
   const agentItems = [
     {
       id: 'text-1',
@@ -430,12 +438,18 @@ const FeaturesSection = () => {
         <InteractiveFeatureCard items={spaceItems} />
       </div>
       <div className="grid grid-cols-3 gap-10">
-        {[1, 2, 3].map((item) => (
-          <div key={item} className="bg-white/60 backdrop-blur-md border border-white/80 rounded-full py-4 px-10 flex justify-between items-center cursor-pointer hover:bg-white transition-all shadow-lg hover:shadow-xl group">
-            <span className="text-xl font-extrabold text-wysa-green">准备好了吗</span>
-            <span className="text-3xl text-wysa-coral group-hover:translate-x-3 transition-transform duration-300">→</span>
-          </div>
-        ))}
+        <div onClick={() => navigate('/agent')} className="bg-white/60 backdrop-blur-md border border-white/80 rounded-full py-4 px-10 flex justify-between items-center cursor-pointer hover:bg-white transition-all shadow-lg hover:shadow-xl group">
+          <span className="text-xl font-extrabold text-wysa-green">准备好了吗</span>
+          <span className="text-3xl text-wysa-coral group-hover:translate-x-3 transition-transform duration-300">→</span>
+        </div>
+        <div onClick={() => navigate('/checkin')} className="bg-white/60 backdrop-blur-md border border-white/80 rounded-full py-4 px-10 flex justify-between items-center cursor-pointer hover:bg-white transition-all shadow-lg hover:shadow-xl group">
+          <span className="text-xl font-extrabold text-wysa-green">准备好了吗</span>
+          <span className="text-3xl text-wysa-coral group-hover:translate-x-3 transition-transform duration-300">→</span>
+        </div>
+        <div onClick={() => navigate('/ProfileDev')} className="bg-white/60 backdrop-blur-md border border-white/80 rounded-full py-4 px-10 flex justify-between items-center cursor-pointer hover:bg-white transition-all shadow-lg hover:shadow-xl group">
+          <span className="text-xl font-extrabold text-wysa-green">准备好了吗</span>
+          <span className="text-3xl text-wysa-coral group-hover:translate-x-3 transition-transform duration-300">→</span>
+        </div>
       </div>
     </section>
   );
@@ -445,6 +459,32 @@ const FeaturesSection = () => {
 // 7. 评价与消息 & 常见问题 (Feedback & FAQ)
 // ==========================================
 const FeedbackSection = () => {
+  const navigate = useNavigate();
+  const [selectedArticle, setSelectedArticle] = useState(null);
+  const [hotPosts, setHotPosts] = useState([]);
+
+  useEffect(() => {
+    const userId = localStorage.getItem('user_id');
+    fetch(`http://localhost:8000/api/forum/posts?sort=hot&viewer_id=${userId || ''}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.posts) {
+          const formatted = data.posts.map(q => {
+            const likes = q.forum_likes?.[0]?.count || 0;
+            const answers = q.forum_answers?.[0]?.count || 0;
+            return {
+              id: q.id,
+              text: q.content,
+              replies: answers,
+              likes: likes,
+            };
+          });
+          setHotPosts(formatted.slice(0, 5));
+        }
+      })
+      .catch(err => console.error('热榜加载失败', err));
+  }, []);
+
   const wordCloudData = [
     { text: "心理复原力", size: "text-xs", color: "text-wysa-green/60", weight: "font-normal" },
     { text: "深夜陪伴", size: "text-xs", color: "text-wysa-coral/60", weight: "font-normal" },
@@ -481,18 +521,71 @@ const FeedbackSection = () => {
     { text: "我的云端咨询师", size: "text-xs", color: "text-wysa-green/70", weight: "font-normal" },
   ];
 
-  const faqData = [
-    { num: 1, text: "每次和朋友聚会后，我都会反复回想自己是不是说错话了，怎么办？", replies: 128 },
-    { num: 2, text: "睡前脑子停不下来，越想睡越清醒，CBT练习能帮我吗？", replies: 95 },
-    { num: 3, text: "工作压力大到喘不过气，怎么快速缓解焦虑？", replies: 84 },
-    { num: 4, text: "如何停止因为小事产生的长时间精神内耗？", replies: 67 },
-    { num: 5, text: "和伴侣沟通时总是容易争吵，怎么用认知重构改善关系？", replies: 42 },
-  ];
-
   const newsData = [
-    { id: 1, img: "1.jpg", title: "认知行为疗法（CBT）如何重塑你的大脑神经连接？", date: "2026-04-10" },
-    { id: 2, img: "2.jpg", title: "对抗深夜焦虑：5个随时随地可以做的正念小练习", date: "2026-04-08" },
-    { id: 3, img: "3.jpg", title: "告别“情绪内耗”：Agent 是如何成为你的专属倾听者的？", date: "2026-04-01" },
+    {
+      id: 1,
+      img: "1.jpg",
+      title: "认知行为疗法（CBT）如何重塑你的大脑神经连接？",
+      date: "2026-04-10",
+      author: "心理学研究员 张琳",
+      excerpt: "最新的神经影像学研究发现，持续8周的CBT训练不仅缓解了焦虑症状，还让大脑前额叶皮层明显增厚——这意味着我们的思维方式真的可以改变大脑结构。",
+      content: `
+        <h3 style="color:#E58889; font-size: 1.25rem; font-weight: bold; margin-bottom: 0.5rem;">1. CBT如何改变大脑？</h3>
+        <p style="margin-bottom: 1.5rem; line-height: 1.8;">认知行为疗法不仅仅是"聊天"。fMRI研究显示，经过8周系统的CBT练习，大脑的<b>前额叶皮层</b>（负责理性决策和情绪调节）活动显著增强，而<b>杏仁核</b>（恐惧和焦虑的中心）活跃度下降。</p>
+
+        <h3 style="color:#E58889; font-size: 1.25rem; font-weight: bold; margin-bottom: 0.5rem;">2. 神经可塑性：大脑的自我重建</h3>
+        <p style="margin-bottom: 1.5rem; line-height: 1.8;">过去人们认为成年后大脑结构就固定了。但现代神经科学证明，大脑具有<b>神经可塑性</b>——每次当你识别并纠正一个负性自动化思维时，你就在削弱旧的神经回路，同时建立新的、更健康的连接。</p>
+
+        <h3 style="color:#E58889; font-size: 1.25rem; font-weight: bold; margin-bottom: 0.5rem;">3. 从实验室到日常生活</h3>
+        <p style="line-height: 1.8;">好消息是，你不需要昂贵的仪器也能享受这种改变。每天花10分钟做<a href='/agent'>认知重构练习</a>，本质上就是在给自己做一次"大脑健身"。关键在于坚持——神经连接的重塑需要时间和重复。</p>
+      `
+    },
+    {
+      id: 2,
+      img: "2.jpg",
+      title: "对抗深夜焦虑：5个随时随地可以做的正念小练习",
+      date: "2026-04-08",
+      author: "正念导师 陈心悦",
+      excerpt: "夜深人静时，焦虑却格外清醒？这5个不需要任何工具的简易正念技巧，帮助你在3分钟内从慌乱中找回平静，让入睡不再是一场战斗。",
+      content: `
+        <h3 style="color:#E58889; font-size: 1.25rem; font-weight: bold; margin-bottom: 0.5rem;">1. 5-4-3-2-1 感官锚定法</h3>
+        <p style="margin-bottom: 1.5rem; line-height: 1.8;">当你躺在床上思绪纷飞时，调动你的感官：<br/>
+        • 找出你<b>看到</b>的 5 样东西<br/>
+        • 感受你<b>触摸到</b>的 4 样东西<br/>
+        • 倾听你<b>听到</b>的 3 种声音<br/>
+        • 识别你<b>闻到</b>的 2 种气味<br/>
+        • 品味你<b>尝到</b>的 1 种味道<br/>
+        这个简单的练习能在90秒内将你的注意力从焦虑思绪中拉回当下。</p>
+
+        <h3 style="color:#E58889; font-size: 1.25rem; font-weight: bold; margin-bottom: 0.5rem;">2. 身体扫描冥想</h3>
+        <p style="margin-bottom: 1.5rem; line-height: 1.8;">从脚趾开始，逐步将注意力上移到小腿、大腿、腹部、胸部、肩膀、手臂、颈部、面部。在每个部位停留5-10秒，<b>只是觉察而不评判</b>任何感觉——温暖、麻刺、紧绷或放松都可以。</p>
+
+        <h3 style="color:#E58889; font-size: 1.25rem; font-weight: bold; margin-bottom: 0.5rem;">3. 呼吸计数法</h3>
+        <p style="line-height: 1.8;">这是一个简单却极有效的方法：吸气时默数"1"，呼气时默数"2"，一直数到10，然后重新开始。如果你的思绪飘走了（这一定会发生），温和地回到"1"重新开始。关键是<b>不对自己生气</b>——飘走再回来，这就是练习本身。</p>
+      `
+    },
+    {
+      id: 3,
+      img: "3.jpg",
+      title: "告别「情绪内耗」：Agent 是如何成为你的专属倾听者的？",
+      date: "2026-04-01",
+      author: "产品体验师 王思远",
+      excerpt: "情绪内耗是现代人最大的精力黑洞。本文深度剖析Emotia的AI Agent如何通过CBT核心技术，在每一次对话中帮你识别认知扭曲、重构思维模式，成为随身的「心理急救员」。",
+      content: `
+        <h3 style="color:#E58889; font-size: 1.25rem; font-weight: bold; margin-bottom: 0.5rem;">1. 什么是情绪内耗？</h3>
+        <p style="margin-bottom: 1.5rem; line-height: 1.8;">情绪内耗指的是在没有外部压力的情况下，个体因反复思考、担忧和自我怀疑而消耗大量心理能量的状态。它就像一个<b>隐形的能量黑洞</b>，让你即使什么都没做也感到精疲力竭。</p>
+
+        <h3 style="color:#E58889; font-size: 1.25rem; font-weight: bold; margin-bottom: 0.5rem;">2. Agent如何识别你的认知扭曲？</h3>
+        <p style="margin-bottom: 1.5rem; line-height: 1.8;">Emotia的AI Agent内置了CBT框架下的<b>常见认知扭曲识别模型</b>，包括：<br/>
+        • <b>灾难化思维</b>："如果我这次汇报搞砸了，我的职业生涯就完了"<br/>
+        • <b>非黑即白</b>："要么做到完美，要么就是彻头彻尾的失败"<br/>
+        • <b>读心术</b>："他们一定觉得我很无能"<br/>
+        Agent会在对话中敏锐地捕捉这些模式，并温和地引导你重新审视。</p>
+
+        <h3 style="color:#E58889; font-size: 1.25rem; font-weight: bold; margin-bottom: 0.5rem;">3. 为什么匿名对话如此重要？</h3>
+        <p style="line-height: 1.8;">很多人在面对真人咨询师时会因为社交压力而<b>下意识美化或隐藏</b>真实感受。而与Agent对话的匿名性和非评判性，让人们更容易敞开心扉、坦诚面对自己的脆弱——这正是认知重构最关键的起点。</p>
+      `
+    },
   ];
 
   return (
@@ -535,26 +628,28 @@ const FeedbackSection = () => {
             </h4>
 
             <div className="space-y-1 flex-1 overflow-y-auto pr-2 custom-scrollbar">
-              {faqData.map((item) => (
-                <div key={item.num} className="group flex items-start gap-3 cursor-pointer hover:bg-white/10 py-2 px-2 -mx-2 rounded-xl transition-colors">
+              {hotPosts.length > 0 ? hotPosts.map((item, i) => (
+                <div key={item.id} onClick={() => navigate(`/interactive?postId=${item.id}`)} className="group flex items-start gap-3 cursor-pointer hover:bg-white/10 py-2 px-2 -mx-2 rounded-xl transition-colors">
                   <span className={`shrink-0 w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center mt-0.5 shadow-sm
-                    ${item.num <= 3 ? 'bg-wysa-pink text-wysa-green' : 'bg-white/20 text-white/80'}`}>
-                    {item.num}
+                    ${i < 3 ? 'bg-wysa-pink text-wysa-green' : 'bg-white/20 text-white/80'}`}>
+                    {i + 1}
                   </span>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <p className="text-white/90 text-sm font-medium leading-snug group-hover:text-white transition-colors truncate">
                       {item.text}
                     </p>
                     <p className="text-[10px] text-white/50 mt-1 flex items-center gap-1">
-
+                      {item.replies > 0 && <span>💬 {item.replies} 条回复</span>}
                     </p>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <p className="text-white/50 text-sm text-center py-4">加载中...</p>
+              )}
             </div>
 
             <div className="mt-2 text-right flex flex-col items-end border-t border-white/20 pt-3 shrink-0">
-              <button className="bg-wysa-pink text-wysa-green rounded-full px-6 py-1.5 text-sm font-bold hover:bg-white transition shadow-md flex items-center space-x-1">
+              <button onClick={() => navigate('/interactive')} className="bg-wysa-pink text-wysa-green rounded-full px-6 py-1.5 text-sm font-bold hover:bg-white transition shadow-md flex items-center space-x-1 cursor-pointer">
                 <span>进入讨论区提问</span><span>→</span>
               </button>
             </div>
@@ -566,15 +661,15 @@ const FeedbackSection = () => {
       <div className="w-full text-left mt-4">
         <div className="flex items-end mb-6 gap-4">
           <h3 className="text-3xl font-extrabold text-wysa-green leading-none">最新消息与专栏</h3>
-          <button className="border border-wysa-coral text-wysa-coral font-bold rounded-full px-4 py-1 text-xs flex items-center space-x-1 hover:bg-wysa-coral hover:text-white transition ml-2">
+          <button onClick={() => navigate('/interactive')} className="border border-wysa-coral text-wysa-coral font-bold rounded-full px-4 py-1 text-xs flex items-center space-x-1 hover:bg-wysa-coral hover:text-white transition ml-2 cursor-pointer">
             <span>查看全部文章</span><span>→</span>
           </button>
         </div>
 
-        {/* 文章卡片 - 改用半透明玻璃态，融入粉色全局背景 */}
+        {/* 文章卡片 */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {newsData.map((news) => (
-            <div key={news.id} className="bg-white/60 backdrop-blur-md rounded-[24px] border border-white/50 shadow-md overflow-hidden group cursor-pointer hover:-translate-y-1.5 transition-all duration-300 hover:shadow-xl flex flex-col">
+            <div onClick={() => setSelectedArticle(news)} key={news.id} className="bg-white/60 backdrop-blur-md rounded-[24px] border border-white/50 shadow-md overflow-hidden group cursor-pointer hover:-translate-y-1.5 transition-all duration-300 hover:shadow-xl flex flex-col">
               <div className="w-full h-[180px] overflow-hidden relative bg-gray-100/50">
                 <img
                   src={news.img}
@@ -590,10 +685,13 @@ const FeedbackSection = () => {
               </div>
               <div className="p-6 flex flex-col flex-1 justify-between">
                 <div>
-                  <p className="text-[10px] text-gray-500 mb-2 font-medium">{news.date}</p>
+                  <p className="text-[10px] text-gray-500 mb-2 font-medium">{news.date} · {news.author}</p>
                   <h4 className="text-base font-bold text-gray-800 leading-snug group-hover:text-wysa-coral transition-colors line-clamp-2">
                     {news.title}
                   </h4>
+                  <p className="text-xs text-gray-500 mt-3 leading-relaxed line-clamp-3">
+                    {news.excerpt}
+                  </p>
                 </div>
                 <div className="mt-4 flex items-center text-xs font-bold text-wysa-green group-hover:text-wysa-coral transition-colors">
                   阅读全文 <span className="ml-1 transition-transform group-hover:translate-x-1">→</span>
@@ -603,6 +701,41 @@ const FeedbackSection = () => {
           ))}
         </div>
       </div>
+
+      {/* 文章详情弹窗 */}
+      <AnimatePresence>
+        {selectedArticle && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 pointer-events-auto">
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-wysa-green/40 backdrop-blur-sm transition-opacity"
+              onClick={() => setSelectedArticle(null)}
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="relative bg-white w-full max-w-3xl max-h-[85vh] rounded-[2rem] shadow-2xl overflow-hidden flex flex-col"
+            >
+              <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10">
+                <span className="text-sm font-bold text-wysa-green bg-wysa-green/10 px-3 py-1 rounded-full">站内专栏</span>
+                <button onClick={() => setSelectedArticle(null)} className="text-gray-400 hover:text-wysa-green bg-gray-50 hover:bg-wysa-green/10 rounded-full w-8 h-8 flex items-center justify-center transition-colors">✕</button>
+              </div>
+              <div className="p-8 overflow-y-auto">
+                <h2 className="text-3xl font-black text-wysa-green mb-4">{selectedArticle.title}</h2>
+                <div className="flex gap-4 text-sm text-gray-500 mb-8 pb-8 border-b border-gray-100">
+                  <span>作者：{selectedArticle.author}</span>
+                  <span>发布于：{selectedArticle.date}</span>
+                </div>
+                <div
+                  className="text-wysa-green/80"
+                  dangerouslySetInnerHTML={{ __html: selectedArticle.content }}
+                />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </section>
   );

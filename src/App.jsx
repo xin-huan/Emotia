@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
 import Home from './pages/Home';
 import AboutEmotia from './pages/AboutEmotia';
@@ -9,6 +9,14 @@ import Agent from './pages/AgentTest';
 import Test from './pages/Test';
 import CheckInTest from './pages/CheckInTest';
 import ProfileDev from './pages/ProfileDev'
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
 
 function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -38,6 +46,7 @@ function App() {
 
   return (
     <Router>
+      <ScrollToTop />
       <Navbar
         onLoginClick={() => setIsAuthModalOpen(true)}
         user={user}
