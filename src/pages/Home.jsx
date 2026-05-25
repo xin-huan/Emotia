@@ -388,8 +388,8 @@ const FeaturesSection = () => {
         </div>
       ),
     },
-    { id: 'img-1-1', content: <img src="/1.jpg" alt="Feature 1" className="w-[90%] h-[90%] object-cover rounded-[30px] shadow-sm pointer-events-none" /> },
-    { id: 'img-1-2', content: <img src="/2.jpg" alt="Feature 2" className="w-[90%] h-[90%] object-cover rounded-[30px] shadow-sm pointer-events-none" /> }
+    { id: 'img-1-1', content: <img src="/agent1.png" alt="Feature 1" className="w-[90%] h-[90%] object-cover rounded-[30px] shadow-sm pointer-events-none" /> },
+    { id: 'img-1-2', content: <img src="/agent2s.png" alt="Feature 2" className="w-[90%] h-[90%] object-cover rounded-[30px] shadow-sm pointer-events-none" /> }
   ];
 
   const gameItems = [
@@ -405,7 +405,7 @@ const FeaturesSection = () => {
         </div>
       ),
     },
-    { id: 'img-2-1', content: <img src="/3.jpg" alt="Feature" className="w-[90%] h-[90%] object-cover rounded-[30px] shadow-sm pointer-events-none" /> }
+    { id: 'img-2-1', content: <img src="/game.png" alt="Feature" className="w-[90%] h-[90%] object-cover rounded-[30px] shadow-sm pointer-events-none" /> }
   ];
 
   const spaceItems = [
@@ -420,7 +420,7 @@ const FeaturesSection = () => {
         </div>
       ),
     },
-    { id: 'img-3-1', content: <img src="/5.jpg" alt="Feature" className="w-[90%] h-[90%] object-cover rounded-[30px] shadow-sm pointer-events-none" /> }
+    { id: 'img-3-1', content: <img src="/profile.png" alt="Feature" className="w-[90%] h-[90%] object-cover rounded-[30px] shadow-sm pointer-events-none" /> }
   ];
 
   return (
