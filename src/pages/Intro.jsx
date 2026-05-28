@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motion';
-import Galaxy from '../components/Galaxy';
+import Silk from '../components/Silk';
 import InfiniteMenu from '../components/InfiniteMenu';
-
 // ==========================================
 // 稳定随机数
 // ==========================================
@@ -84,7 +83,14 @@ const RippleText = React.memo(function RippleText({ text }) {
 // ==========================================
 export default function Intro() {
   const [stage, setStage] = useState('eye');
-  const [audioStarted, setAudioStarted] = useState(false);
+  const [activeWorkIndex, setActiveWorkIndex] = useState(0);
+
+  const menuItems = useMemo(() => WORK_ITEMS.map(item => ({
+    image: `/${item.id === 1 ? 'about3.png' : item.id === 2 ? 'about1.jpg' : item.id === 3 ? 'agent1.png' : item.id === 4 ? 'test.png' : item.id === 5 ? '1.jpg' : item.id === 6 ? 'A.png' : 'profile.png'}`,
+    title: item.title,
+    description: item.zh,
+    link: item.path,
+  })), []);
 
   const containerRef = useRef(null);
   const audioRef = useRef(null);
@@ -123,17 +129,15 @@ export default function Intro() {
 
 
   useEffect(() => {
-    audioRef.current = new Audio('/music.mp3');
-    audioRef.current.loop = true;
-    audioRef.current.volume = 0.25;
-    return () => { audioRef.current?.pause(); audioRef.current = null; };
+    const audio = new Audio('/M500003lTIFm4NKdSk.mp3');
+    audio.loop = true;
+    audio.volume = 0.25;
+    audio.play().catch(() => {});
+    audioRef.current = audio;
+    return () => { audio.pause(); audioRef.current = null; };
   }, []);
 
   const handleEnter = () => {
-    if (!audioStarted && audioRef.current) {
-      audioRef.current.play().catch(() => {});
-      setAudioStarted(true);
-    }
     setStage('ripple');
   };
 
@@ -227,24 +231,18 @@ export default function Intro() {
             transition={{ type: 'spring', stiffness: 60, damping: 20 }}
             style={{ rotateX: smoothTiltX, rotateY: smoothTiltY, perspective: 1000 }}
           >
-            {/* Galaxy 星空背景 */}
+            {/* Silk 动态丝缎背景 */}
             <div className="absolute inset-0 z-0">
-              <Galaxy
-                hueShift={200}
-                density={1.2}
-                glowIntensity={0.4}
-                saturation={0.3}
-                speed={0.6}
-                starSpeed={0.3}
-                rotationSpeed={0.05}
-                twinkleIntensity={0.4}
-                mouseRepulsion={true}
-                repulsionStrength={1.5}
-                transparent={false}
+              <Silk
+                speed={3}
+                scale={1.2}
+                color="#567357"
+                noiseIntensity={1.2}
+                rotation={0.3}
               />
             </div>
 
-            <div className="text-center pt-8 pb-4 shrink-0 pointer-events-none relative z-10">
+            <div className="text-center pt-6 pb-2 shrink-0 pointer-events-none relative z-10">
               <motion.h2
                 className="text-4xl md:text-5xl font-bold text-white mb-3"
                 style={{ fontFamily: "'Playfair Display', serif" }}
@@ -256,25 +254,35 @@ export default function Intro() {
               >探索 Emotia 的每一个角落</motion.p>
             </div>
 
-            {/* InfiniteMenu 3D 球体工作卡片 - 居中 */}
-            <div className="flex-1 relative z-10 flex items-center justify-center">
+            {/* InfiniteMenu 3D 球体 */}
+            <div className="flex-1 relative z-10 -mt-12">
               <InfiniteMenu
-                items={WORK_ITEMS.map(item => ({
-                  image: `/${item.id === 1 ? 'about3.png' : item.id === 2 ? 'about1.jpg' : item.id === 3 ? 'agent1.png' : item.id === 4 ? 'test.png' : item.id === 5 ? '1.jpg' : item.id === 6 ? 'A.png' : 'profile.png'}`,
-                  title: item.title,
-                  description: item.zh,
-                  link: item.path,
-                }))}
-                scale={1.0}
+                items={menuItems}
+                scale={1.4}
                 onItemClick={(active) => window.location.href = active.link}
+                onActiveChange={(_item, idx) => setActiveWorkIndex(idx)}
               />
             </div>
 
-            <motion.button
-              onClick={() => setStage('ripple')}
-              className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/60 hover:text-white text-sm tracking-wider transition-colors z-30"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2 }}
-            >↑ BACK</motion.button>
+            {/* 紫色圆形按钮 - absolute 固定定位在球体下方中央 */}
+            <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-30">
+              <motion.button
+                onClick={() => window.location.href = WORK_ITEMS[activeWorkIndex].path}
+                className="w-14 h-14 rounded-full flex items-center justify-center bg-wysa-green hover:bg-wysa-green/80 shadow-[0_0_30px_rgba(86,115,87,0.5)] transition-all"
+                whileHover={{ scale: 1.1, boxShadow: '0 0 50px hsla(262, 83%, 58%, 0.70)' }}
+                whileTap={{ scale: 0.9 }}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="19" x2="12" y2="5"/>
+                  <polyline points="5 12 12 5 19 12"/>
+                </svg>
+              </motion.button>
+            </div>
+
+            {/* 当前项目名称 - absolute 定位 */}
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-30">
+              <span className="text-white/50 text-xs tracking-wider whitespace-nowrap">{WORK_ITEMS[activeWorkIndex].zh} — {WORK_ITEMS[activeWorkIndex].title}</span>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
