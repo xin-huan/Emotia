@@ -308,37 +308,25 @@ class InfiniteGridMenu {
   #getVertexWorldPosition(index) { const nearestVertexPos = this.instancePositions[index]; return vec3.transformQuat(vec3.create(), nearestVertexPos, this.control.orientation); }
 }
 
-export default function InfiniteMenu({ items = [], scale = 1.0, onItemClick }) {
+export default function InfiniteMenu({ items = [], scale = 1.0, onItemClick, onActiveChange }) {
   const canvasRef = useRef(null);
   const [activeItem, setActiveItem] = useState(null);
   const [isMoving, setIsMoving] = useState(false);
+  const onActiveChangeRef = useRef(onActiveChange);
+  onActiveChangeRef.current = onActiveChange;
 
   useEffect(() => {
     const canvas = canvasRef.current; let sketch;
-    const handleActiveItem = index => { const itemIndex = index % items.length; setActiveItem(items[itemIndex]); };
+    const handleActiveItem = index => { const itemIndex = index % items.length; const item = items[itemIndex]; setActiveItem(item); if (onActiveChangeRef.current) onActiveChangeRef.current(item, itemIndex); };
     if (canvas) { sketch = new InfiniteGridMenu(canvas, items.length ? items : [{ image: 'https://picsum.photos/900/900?grayscale' }], handleActiveItem, setIsMoving, sk => sk.run(), scale); }
     const handleResize = () => { if (sketch) sketch.resize(); };
     window.addEventListener('resize', handleResize); handleResize();
     return () => { window.removeEventListener('resize', handleResize); };
   }, [items, scale]);
 
-  const handleButtonClick = () => {
-    if (!activeItem) return;
-    if (onItemClick) onItemClick(activeItem);
-  };
-
   return (
     <div className="relative w-full h-full">
       <canvas ref={canvasRef} className="cursor-grab w-full h-full overflow-hidden relative outline-none active:cursor-grabbing bg-transparent" style={{ background: 'transparent' }} />
-      {activeItem && (
-        <div className={`absolute bottom-0 left-0 right-0 flex flex-col items-center pb-4 transition-all duration-500 ${isMoving ? 'opacity-0' : 'opacity-100'}`}>
-          <p className="text-white/80 text-sm mb-1">{activeItem.description}</p>
-          <h2 className="text-wysa-coral text-2xl font-black mb-3">{activeItem.title}</h2>
-          <div onClick={handleButtonClick} className="w-16 h-16 grid place-items-center bg-white border-[4px] border-wysa-coral rounded-full cursor-pointer shadow-[0_0_25px_rgba(229,136,137,0.6)] hover:scale-110 transition-transform">
-            <span className="text-wysa-coral text-3xl font-bold leading-none">&#x2197;</span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

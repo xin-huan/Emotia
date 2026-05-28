@@ -1,5 +1,6 @@
 # web
-置顶一下方便我修改前端（海鲜独断专行ing）
+.\.venv\Scripts\activate
+
 ```python
 npm run dev
 ```
