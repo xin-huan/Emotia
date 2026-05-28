@@ -1,5 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
+import AOS from 'aos';
+import 'aos/dist/aos.css';
 import Home from './pages/Home';
 import AboutEmotia from './pages/AboutEmotia';
 import Navbar from './components/Navbar';
@@ -9,6 +11,7 @@ import Agent from './pages/AgentTest';
 import Test from './pages/Test';
 import CheckInTest from './pages/CheckInTest';
 import ProfileDev from './pages/ProfileDev'
+import Intro from './pages/Intro'
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -18,9 +21,11 @@ function ScrollToTop() {
   return null;
 }
 
-function App() {
+function AppContent() {
+  const location = useLocation();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [user, setUser] = useState(null);
+  const isIntroPage = location.pathname === '/' || location.pathname === '/intro';
 
   // 初始化检查
   useEffect(() => {
@@ -29,6 +34,18 @@ function App() {
     if (savedUserId) {
       setUser({ user_id: savedUserId, email: savedEmail });
     }
+  }, []);
+
+  // 全局 AOS 滚动动画初始化
+  useEffect(() => {
+    AOS.init({
+      duration: 800,
+      once: false,
+      mirror: true,
+      easing: 'ease-in-out',
+      offset: 80,
+    });
+    document.documentElement.style.scrollBehavior = 'smooth';
   }, []);
 
   // 登录成功回调
@@ -45,16 +62,19 @@ function App() {
   };
 
   return (
-    <Router>
+    <>
       <ScrollToTop />
-      <Navbar
-        onLoginClick={() => setIsAuthModalOpen(true)}
-        user={user}
-        onLogout={handleLogout}
-      />
+      {!isIntroPage && (
+        <Navbar
+          onLoginClick={() => setIsAuthModalOpen(true)}
+          user={user}
+          onLogout={handleLogout}
+        />
+      )}
 
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<Intro />} />
+        <Route path="/home" element={<Home />} />
         <Route path="/about" element={<AboutEmotia />} />
         <Route path="/interactive" element={<Interactive />} />
         <Route path="/agent" element={<Agent />} />
@@ -65,11 +85,21 @@ function App() {
         <Route path="/profile" element={<ProfileDev />} />
       </Routes>
 
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        onLoginSuccess={handleLoginSuccess}
-      />
+      {!isIntroPage && (
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+          onLoginSuccess={handleLoginSuccess}
+        />
+      )}
+    </>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }

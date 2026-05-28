@@ -9,3 +9,20 @@
   /* 兼容你代码中可能存在的其他变量 */
   --color-brand-blue: #E58889;
 }
+
+/* 隐藏滚动条 */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* 隐藏 Unicorn Studio 水印 */
+[class*="unicorn-watermark"],
+[class*="unicorn-branding"],
+[class*="made-with"],
+a[href*="unicorn.studio"],
+div[id*="unicorn-watermark"],
+div[class*="us-watermark"] {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

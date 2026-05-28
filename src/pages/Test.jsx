@@ -6,7 +6,8 @@ import ClickSpark from '../components/ClickSpark';
 import { useNavigate } from 'react-router-dom';
 
 // 引入 TargetCursor
-import TargetCursor from '../components/TargetCursor'; // 确保路径正确
+import TargetCursor from '../components/TargetCursor';
+import LightRays from '../components/LightRays';
 
 const API_BASE = "http://localhost:8000/api";
 
@@ -267,8 +268,23 @@ export default function TestPage() {
   return (
     <div
       ref={scrollContainerRef}
-      className="h-screen bg-wysa-pink text-wysa-green font-sans pt-30 pb-12 overflow-y-auto overflow-x-hidden relative"
+      className="h-screen text-wysa-green font-sans pt-30 pb-12 overflow-y-auto overflow-x-hidden relative"
     >
+      {/* LightRays 背景 */}
+      <div className="fixed inset-0 z-0 bg-[#E58889]/40">
+        <LightRays
+          raysColor="#ffffff"
+          raysSpeed={1.5}
+          lightSpread={3.5}
+          rayLength={5.0}
+          pulsating={true}
+          fadeDistance={2.0}
+          saturation={2.0}
+          mouseInfluence={0.2}
+          followMouse={true}
+        />
+      </div>
+
       {/* TargetCursor 应用在整个页面，并指定其目标 */}
       <TargetCursor targetSelector=".cursor-target" />
 
@@ -345,7 +361,7 @@ export default function TestPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
                   {displayTests.length > 0 ? (
-                    displayTests.map(test => {
+                    displayTests.map((test, idx) => {
                       const displayIcon = getIconByCategory(test.tags);
 
                       return (

@@ -41,7 +41,7 @@ const AboutEmotia = () => {
       <div className="min-h-screen bg-wysa-pink font-extrabold antialiased text-wysa-green pt-28 md:pt-36">
 
         {/* --- 第一屏：Hero 轮播 --- */}
-        <section className="relative h-[calc(100vh-7rem)] w-full flex flex-col items-center px-6 overflow-hidden">
+        <section data-aos="fade-up" className="relative h-[calc(100vh-7rem)] w-full flex flex-col items-center px-6 overflow-hidden">
           <div className="relative w-full max-w-[1300px] h-[70vh] group select-none">
             <AnimatePresence initial={false} custom={direction} mode="popLayout">
               <motion.div
@@ -98,7 +98,7 @@ const AboutEmotia = () => {
         </section>
 
         {/* --- 第二屏：Insights 区 (动效文字替换) --- */}
-        <section id="details" className="min-h-screen bg-wysa-pink py-24">
+        <section id="details" data-aos="fade-up" className="min-h-screen bg-wysa-pink py-24">
            <div className="w-full">
               <div className="mb-20 text-center px-6">
                 <h4 className="text-wysa-coral text-sm font-bold tracking-[0.4em] mb-12 uppercase">Emotia Insights</h4>
@@ -130,9 +130,9 @@ const AboutEmotia = () => {
                    animate={{ y: [0, -30, 0] }}
                    transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
                  >
-                    <div className="bg-white rounded-[40px] shadow-sm border border-gray-50 overflow-hidden hover:shadow-lg transition-all duration-300 group">
+                    <div data-aos="fade-right" data-aos-delay="100" className="bg-white rounded-[40px] shadow-sm border border-gray-50 overflow-hidden hover:shadow-lg transition-all duration-300 group">
                        <div className="w-full h-48 md:h-56 bg-gray-100 overflow-hidden relative">
-                          <img src="/1.jpg" alt="CBT" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                          <img src="/A.png" alt="CBT" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                        </div>
                        <div className="p-8 md:p-12">
                           <h3 className="text-2xl font-bold mb-4 text-wysa-green">认知行为疗法 (CBT) 的科学基础</h3>
@@ -143,9 +143,9 @@ const AboutEmotia = () => {
                        </div>
                     </div>
 
-                    <div className="bg-white rounded-[40px] shadow-sm border border-gray-50 overflow-hidden hover:shadow-lg transition-all duration-300 group">
+                    <div data-aos="fade-right" data-aos-delay="200" className="bg-white rounded-[40px] shadow-sm border border-gray-50 overflow-hidden hover:shadow-lg transition-all duration-300 group">
                        <div className="w-full h-48 md:h-56 bg-gray-100 overflow-hidden relative">
-                          <img src="/2.jpg" alt="Emotions" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                          <img src="/5.jpg" alt="Emotions" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                        </div>
                        <div className="p-8 md:p-12">
                           <h3 className="text-2xl font-bold mb-4 text-wysa-green">情绪智力：接纳心灵的波浪</h3>
@@ -156,7 +156,7 @@ const AboutEmotia = () => {
                        </div>
                     </div>
 
-                    <div className="bg-white rounded-[40px] shadow-sm border border-gray-50 overflow-hidden hover:shadow-lg transition-all duration-300 group">
+                    <div data-aos="fade-right" data-aos-delay="300" className="bg-white rounded-[40px] shadow-sm border border-gray-50 overflow-hidden hover:shadow-lg transition-all duration-300 group">
                        <div className="w-full h-48 md:h-56 bg-gray-100 overflow-hidden relative">
                           <img src="/4.jpg" alt="AI Agent" className="w-full h-full object-cover object-[50%_40%] transition-transform duration-700 group-hover:scale-105" />
                        </div>
@@ -176,7 +176,7 @@ const AboutEmotia = () => {
                    animate={{ y: [0, 30, 0] }}
                    transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
                  >
-                    <div className="bg-white p-4 rounded-[40px] shadow-sm border border-gray-50 hover:shadow-lg transition-shadow">
+                    <div data-aos="fade-left" data-aos-delay="150" className="bg-white p-4 rounded-[40px] shadow-sm border border-gray-50 hover:shadow-lg transition-shadow">
                        <div className="w-full aspect-video rounded-[30px] overflow-hidden bg-gray-100">
                           <video className="w-full h-full object-cover" controls preload="metadata" playsInline>
                             <source src="/cbt.mp4" type="video/mp4" />
@@ -185,7 +185,7 @@ const AboutEmotia = () => {
                        <p className="text-sm text-center text-wysa-green/70 mt-5 mb-2 font-normal">CBT 工作原理</p>
                     </div>
 
-                    <div className="bg-white p-4 rounded-[40px] shadow-sm border border-gray-50 hover:shadow-lg transition-shadow">
+                    <div data-aos="fade-left" data-aos-delay="250" className="bg-white p-4 rounded-[40px] shadow-sm border border-gray-50 hover:shadow-lg transition-shadow">
                        <div className="w-full aspect-video rounded-[30px] overflow-hidden bg-gray-100">
                           <video className="w-full h-full object-cover" controls preload="metadata" playsInline>
                             <source src="/emotion.mp4" type="video/mp4" />
@@ -194,7 +194,7 @@ const AboutEmotia = () => {
                        <p className="text-sm text-center text-wysa-green/70 mt-5 mb-2 font-normal">接纳你的情绪影子</p>
                     </div>
 
-                    <div className="bg-white p-4 rounded-[40px] shadow-sm border border-gray-50 hover:shadow-lg transition-shadow">
+                    <div data-aos="fade-left" data-aos-delay="350" className="bg-white p-4 rounded-[40px] shadow-sm border border-gray-50 hover:shadow-lg transition-shadow">
                        <div className="w-full aspect-video rounded-[30px] overflow-hidden bg-gray-100">
                           <video className="w-full h-full object-cover" controls preload="metadata" playsInline>
                             <source src="/ai.mp4" type="video/mp4" />
@@ -203,7 +203,7 @@ const AboutEmotia = () => {
                        <p className="text-sm text-center text-wysa-green/70 mt-5 mb-2 font-normal">AI 与心理健康探讨</p>
                     </div>
 
-                    <div className="bg-white p-4 rounded-[40px] shadow-sm border border-gray-50 hover:shadow-lg transition-shadow">
+                    <div data-aos="fade-left" data-aos-delay="450" className="bg-white p-4 rounded-[40px] shadow-sm border border-gray-50 hover:shadow-lg transition-shadow">
                        <div className="w-full aspect-video rounded-[30px] overflow-hidden bg-gray-100">
                           <video className="w-full h-full object-cover" controls preload="metadata" playsInline>
                             <source src="/4.mp4" type="video/mp4" />

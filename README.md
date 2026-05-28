@@ -4,6 +4,7 @@
 npm run dev
 ```
 ```python
+cd backend
 uvicorn app.main:app --reload
 ```
 ### 第一步：拉取代码

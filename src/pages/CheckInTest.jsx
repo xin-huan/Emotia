@@ -142,11 +142,11 @@ const CheckInTest = () => {
         input[type="checkbox"] { width: 20px; height: 20px; margin-right: 15px; accent-color: #567357; cursor: pointer; }
       `}</style>
 
-      <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
 
         {/* ================= 模块 1：情绪打卡面板 ================= */}
-        <div className="quest-card" style={{ textAlign: 'center' }}>
-          <h3 className="quest-title">🌡️ 今日能量检测</h3>
+        <div data-aos="zoom-in-up" data-aos-easing="ease-out-back" data-aos-duration="700" className="quest-card" style={{ textAlign: 'center' }}>
+          <h3 className="quest-title">今日能量检测</h3>
           <p style={{ color: '#666', fontSize: '14px' }}>
             {hasCheckedIn ? "✅ 今日已完成检测，干得漂亮！" : "指挥官，请评估您今天的精神状态（每日限1次）："}
           </p>
@@ -185,84 +185,82 @@ const CheckInTest = () => {
           )}
         </div>
 
-        {/* ================= 模块 2：游戏化任务看板 ================= */}
-        <div className="quest-card">
-          <h3 className="quest-title" style={{ color: '#E58889', borderColor: '#E58889' }}>📜 每日日常任务</h3>
+        {/* ================= 模块 2+3：并排：日常任务 + 阳光储蓄罐 ================= */}
+        <div data-aos="zoom-in-up" data-aos-easing="ease-out-back" data-aos-duration="700" data-aos-delay="100" style={{ display: 'flex', gap: '20px' }}>
 
-          <div className={`task-item ${hasCheckedIn ? 'completed' : ''}`}>
-            {/* 系统自动判定：只读 */}
-            <input type="checkbox" checked={hasCheckedIn} readOnly />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 'bold' }}>完成今日 Emoji 心情打卡</div>
-              <div style={{ fontSize: '12px', color: '#999' }}>主线任务 / 奖励：解锁后续任务</div>
+          {/* 左：游戏化任务看板 */}
+          <div className="quest-card" style={{ flex: 1 }}>
+            <h3 className="quest-title" style={{ color: '#E58889', borderColor: '#E58889' }}>📜 每日日常任务</h3>
+
+            <div className={`task-item ${hasCheckedIn ? 'completed' : ''}`}>
+              <input type="checkbox" checked={hasCheckedIn} readOnly />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 'bold' }}>完成今日 Emoji 心情打卡</div>
+                <div style={{ fontSize: '12px', color: '#999' }}>主线任务 / 奖励：解锁后续任务</div>
+              </div>
+            </div>
+
+            {tasks.filter(t => t.source === 'system_random').map(task => (
+              <div className={`task-item ${task.is_completed ? 'completed' : ''}`} key={task.id} style={{ borderLeftColor: '#3498db' }}>
+                <input type="checkbox" checked={task.is_completed} onChange={() => handleToggleTask(task.id, task.is_completed)} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 'bold' }}>{task.task_content}</div>
+                  <div style={{ fontSize: '12px', color: '#999' }}>
+                    行为激活任务 / 奖励：+5 积极能量
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {tasks.filter(t => t.source === 'agent_custom').map(task => (
+              <div className={`task-item ${task.is_completed ? 'completed' : ''}`} key={task.id} style={{ borderLeftColor: '#9b59b6' }}>
+                <input type="checkbox" checked={task.is_completed} onChange={() => handleToggleTask(task.id, task.is_completed)} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 'bold' }}>{task.task_content}</div>
+                  <div style={{ fontSize: '12px', color: '#999' }}>
+                    Agent 专属定制 / 奖励：+10 治愈值
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {guideTasks.map((task, idx) => (
+              <div className={`task-item ${task.completed ? 'completed' : ''}`} key={idx} style={{ borderLeftColor: '#E58889' }}>
+                <input type="checkbox" checked={task.completed} readOnly />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 'bold', color: '#E58889' }}>{task.content}</div>
+                  <div style={{ fontSize: '12px', color: '#999' }}>
+                    分支任务 / {task.content.includes("Agent") && !task.completed ?
+                    <button onClick={()=>window.location.href='/agent'} style={{background:'#E58889', color:'#fff', border:'none', borderRadius:'4px', cursor:'pointer', padding:'2px 8px'}}>立即前往</button>
+                    : '请在下方或指定页面完成'}
+                  </div>
+                </div>
+              </div>
+            ))}
+
+          </div>
+
+          {/* 右：常驻阳光储蓄罐 */}
+          <div className="quest-card" style={{ flex: 1, borderColor: '#567357' }}>
+            <h3 className="quest-title" style={{ color: '#567357', borderColor: '#567357' }}>☀️ 阳光储蓄罐</h3>
+            <p style={{ color: '#666', fontSize: '14px' }}>抓住转瞬即逝的快乐。哪怕是一杯好喝的奶茶，也可以存进来！</p>
+
+            <div style={{ display: 'flex', marginTop: '15px' }}>
+              <input
+                value={sunshineText}
+                onChange={(e) => setSunshineText(e.target.value)}
+                placeholder="记录一件好事..."
+                style={{ flex: 1, padding: '12px', borderRadius: '8px 0 0 8px', border: 'none', outline: 'none', background: '#fff', color: '#333' }}
+              />
+              <button
+                onClick={handleSunshineSubmit}
+                style={{ padding: '0 25px', background: '#567357', color: '#fff', border: 'none', borderRadius: '0 8px 8px 0', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px' }}
+              >
+                存入
+              </button>
             </div>
           </div>
 
-          {/* 渲染：系统随机行为激活任务 */}
-          {tasks.filter(t => t.source === 'system_random').map(task => (
-            <div className={`task-item ${task.is_completed ? 'completed' : ''}`} key={task.id} style={{ borderLeftColor: '#3498db' }}>
-              {/* 用户手动点击判定：绑定 onChange 事件 */}
-              <input type="checkbox" checked={task.is_completed} onChange={() => handleToggleTask(task.id, task.is_completed)} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 'bold' }}>{task.task_content}</div>
-                <div style={{ fontSize: '12px', color: '#999' }}>
-                  🌱 行为激活任务 / 奖励：+5 积极能量
-                </div>
-              </div>
-            </div>
-          ))}
-
-          {/* 渲染：Agent 专属定制任务 */}
-          {tasks.filter(t => t.source === 'agent_custom').map(task => (
-            <div className={`task-item ${task.is_completed ? 'completed' : ''}`} key={task.id} style={{ borderLeftColor: '#9b59b6' }}>
-              {/* 用户手动点击判定：绑定 onChange 事件 */}
-              <input type="checkbox" checked={task.is_completed} onChange={() => handleToggleTask(task.id, task.is_completed)} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 'bold' }}>{task.task_content}</div>
-                <div style={{ fontSize: '12px', color: '#999' }}>
-                  🤖 Agent 专属定制 / 奖励：+10 治愈值
-                </div>
-              </div>
-            </div>
-          ))}
-
-          {/* 渲染：系统动态引导任务 (如前往咨询室、存入阳光) */}
-          {guideTasks.map((task, idx) => (
-            <div className={`task-item ${task.completed ? 'completed' : ''}`} key={idx} style={{ borderLeftColor: '#E58889' }}>
-              {/* 系统自动判定：只读 */}
-              <input type="checkbox" checked={task.completed} readOnly />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 'bold', color: '#E58889' }}>{task.content}</div>
-                <div style={{ fontSize: '12px', color: '#999' }}>
-                  分支任务 / {task.content.includes("Agent") && !task.completed ?
-                  <button onClick={()=>window.location.href='/agent'} style={{background:'#E58889', color:'#fff', border:'none', borderRadius:'4px', cursor:'pointer', padding:'2px 8px'}}>立即前往</button>
-                  : '请在下方或指定页面完成'}
-                </div>
-              </div>
-            </div>
-          ))}
-
-        </div>
-
-        {/* ================= 模块 3：常驻阳光储蓄罐 ================= */}
-        <div className="quest-card" style={{ borderColor: '#567357' }}>
-          <h3 className="quest-title" style={{ color: '#567357', borderColor: '#567357' }}>🌟 阳光储蓄罐</h3>
-          <p style={{ color: '#666', fontSize: '14px' }}>抓住转瞬即逝的快乐。哪怕是一杯好喝的奶茶，也可以存进来！</p>
-
-          <div style={{ display: 'flex', marginTop: '15px' }}>
-            <input
-              value={sunshineText}
-              onChange={(e) => setSunshineText(e.target.value)}
-              placeholder="记录一件好事..."
-              style={{ flex: 1, padding: '12px', borderRadius: '8px 0 0 8px', border: 'none', outline: 'none', background: '#fff', color: '#333' }}
-            />
-            <button
-              onClick={handleSunshineSubmit}
-              style={{ padding: '0 25px', background: '#567357', color: '#fff', border: 'none', borderRadius: '0 8px 8px 0', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px' }}
-            >
-              存入
-            </button>
-          </div>
         </div>
 
       </div>
