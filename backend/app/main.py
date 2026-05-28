@@ -289,7 +289,7 @@ def get_my_posts(user_id: str):
 
 
 @app.get("/api/forum/posts")
-def get_posts(sort: str = "latest", category_id: int = None, viewer_id: str = None):
+def get_posts(sort: str = "latest", category_id: int = None, viewer_id: str = None, limit: int = 6):
     query = supabase.table("forum_posts").select(
         "*, profiles!user_id(username, avatar_url), forum_likes(count), forum_answers(count)"
     )
@@ -313,10 +313,10 @@ def get_posts(sort: str = "latest", category_id: int = None, viewer_id: str = No
         processed_posts = processed_posts[:10]
     elif sort == "random":
         random.shuffle(all_data)
-        processed_posts = all_data[:3]
+        processed_posts = all_data[:limit]
     else:
         processed_posts = sorted(all_data, key=lambda x: x['created_at'], reverse=True)
-        processed_posts = processed_posts[:3]
+        processed_posts = processed_posts[:limit]
 
     return {
         "posts": processed_posts,

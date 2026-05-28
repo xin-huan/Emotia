@@ -1,8 +1,6 @@
 "use client";
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-motion'; // 确保安装了 motion/react 或 framer-motion
-import AOS from 'aos';
-import 'aos/dist/aos.css';
+import { motion, useMotionValue, useTransform, AnimatePresence, useScroll, useSpring } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 // 自定义特效组件引入 (保持原样)
 import PixelTransition from '../components/PixelTransition';
@@ -389,7 +387,7 @@ const FeaturesSection = () => {
       ),
     },
     { id: 'img-1-1', content: <img src="/agent1.png" alt="Feature 1" className="w-[90%] h-[90%] object-cover rounded-[30px] shadow-sm pointer-events-none" /> },
-    { id: 'img-1-2', content: <img src="/agent2s.png" alt="Feature 2" className="w-[90%] h-[90%] object-cover rounded-[30px] shadow-sm pointer-events-none" /> }
+    { id: 'img-1-2', content: <img src="/agent2.png" alt="Feature 2" className="w-[90%] h-[90%] object-cover rounded-[30px] shadow-sm pointer-events-none" /> }
   ];
 
   const gameItems = [
@@ -524,7 +522,7 @@ const FeedbackSection = () => {
   const newsData = [
     {
       id: 1,
-      img: "1.jpg",
+      img: "屏幕截图 2026-05-25 103459.png",
       title: "认知行为疗法（CBT）如何重塑你的大脑神经连接？",
       date: "2026-04-10",
       author: "心理学研究员 张琳",
@@ -542,7 +540,7 @@ const FeedbackSection = () => {
     },
     {
       id: 2,
-      img: "2.jpg",
+      img: "屏幕截图 2026-05-25 103741.png",
       title: "对抗深夜焦虑：5个随时随地可以做的正念小练习",
       date: "2026-04-08",
       author: "正念导师 陈心悦",
@@ -566,7 +564,7 @@ const FeedbackSection = () => {
     },
     {
       id: 3,
-      img: "3.jpg",
+      img: "屏幕截图 2026-05-25 103847.png",
       title: "告别「情绪内耗」：Agent 是如何成为你的专属倾听者的？",
       date: "2026-04-01",
       author: "产品体验师 王思远",
@@ -621,34 +619,34 @@ const FeedbackSection = () => {
         {/* 右侧：常见问题 - 恢复深绿色主题！撞色更高级 */}
         <div className="w-full lg:w-[55%] flex flex-col">
           <h3 className="text-2xl font-extrabold mb-4 text-wysa-green text-left">我们懂得你 —— 常见问题</h3>
-          <div className="h-[360px] bg-wysa-green/70 border border-wysa-green rounded-[30px] p-6 flex flex-col relative shadow-lg text-white">
+          <div className="h-[360px] bg-wysa-green border border-wysa-green rounded-[30px] p-6 flex flex-col relative shadow-lg text-wysa-pink">
 
-            <h4 className="font-bold text-white text-base flex items-center gap-2 mb-3 border-b border-white/20 pb-2 shrink-0">
-              <span className="text-wysa-coral text-lg">🔥</span> 社区热门讨论
+            <h4 className="font-bold text-wysa-pink text-base flex items-center gap-2 mb-3 border-b border-wysa-pink/20 pb-2 shrink-0">
+              <span className="text-wysa-pink text-lg">🔥</span> 社区热门讨论
             </h4>
 
             <div className="space-y-1 flex-1 overflow-y-auto pr-2 custom-scrollbar">
               {hotPosts.length > 0 ? hotPosts.map((item, i) => (
-                <div key={item.id} onClick={() => navigate(`/interactive?postId=${item.id}`)} className="group flex items-start gap-3 cursor-pointer hover:bg-white/10 py-2 px-2 -mx-2 rounded-xl transition-colors">
+                <div key={item.id} onClick={() => navigate(`/interactive?postId=${item.id}`)} className="group flex items-start gap-3 cursor-pointer hover:bg-wysa-pink/10 py-2 px-2 -mx-2 rounded-xl transition-colors">
                   <span className={`shrink-0 w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center mt-0.5 shadow-sm
-                    ${i < 3 ? 'bg-wysa-pink text-wysa-green' : 'bg-white/20 text-white/80'}`}>
+                    ${i < 3 ? 'bg-wysa-pink text-wysa-green' : 'bg-wysa-pink/20 text-wysa-pink/80'}`}>
                     {i + 1}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-white/90 text-sm font-medium leading-snug group-hover:text-white transition-colors truncate">
+                    <p className="text-wysa-pink/90 text-sm font-medium leading-snug group-hover:text-wysa-pink transition-colors truncate">
                       {item.text}
                     </p>
-                    <p className="text-[10px] text-white/50 mt-1 flex items-center gap-1">
+                    <p className="text-[10px] text-wysa-pink/50 mt-1 flex items-center gap-1">
                       {item.replies > 0 && <span>💬 {item.replies} 条回复</span>}
                     </p>
                   </div>
                 </div>
               )) : (
-                <p className="text-white/50 text-sm text-center py-4">加载中...</p>
+                <p className="text-wysa-pink/50 text-sm text-center py-4">加载中...</p>
               )}
             </div>
 
-            <div className="mt-2 text-right flex flex-col items-end border-t border-white/20 pt-3 shrink-0">
+            <div className="mt-2 text-right flex flex-col items-end border-t border-wysa-pink/20 pt-3 shrink-0">
               <button onClick={() => navigate('/interactive')} className="bg-wysa-pink text-wysa-green rounded-full px-6 py-1.5 text-sm font-bold hover:bg-white transition shadow-md flex items-center space-x-1 cursor-pointer">
                 <span>进入讨论区提问</span><span>→</span>
               </button>
@@ -669,7 +667,7 @@ const FeedbackSection = () => {
         {/* 文章卡片 */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {newsData.map((news) => (
-            <div onClick={() => setSelectedArticle(news)} key={news.id} className="bg-white/60 backdrop-blur-md rounded-[24px] border border-white/50 shadow-md overflow-hidden group cursor-pointer hover:-translate-y-1.5 transition-all duration-300 hover:shadow-xl flex flex-col">
+            <div onClick={() => setSelectedArticle(news)} key={news.id} className="bg-wysa-pink backdrop-blur-md rounded-[24px] border border-white/50 shadow-md overflow-hidden group cursor-pointer hover:-translate-y-1.5 transition-all duration-300 hover:shadow-xl flex flex-col">
               <div className="w-full h-[180px] overflow-hidden relative bg-gray-100/50">
                 <img
                   src={news.img}
@@ -750,7 +748,7 @@ const slidesData = [
     title: "100% 匿名保护",
     description: "您的隐私是我们最看重的事情。在这里，您无需提供真实姓名或任何可识别身份的个人信息，您可以毫无顾虑地倾诉内心的真实想法。",
     highlight: "核心政策：绝对匿名，保护您的安全边界",
-    image: "1.jpg"
+    image: "protect.png"
   },
   {
     id: 1,
@@ -764,28 +762,28 @@ const slidesData = [
     title: "AI 与 真人结合",
     description: "智能AI提供即时的情绪舒缓，专业心理咨询师提供深度的心理干预。两者完美结合，为您提供阶梯式的科学干预方案。",
     highlight: "科技与温度的完美融合",
-    image: "3.jpg"
+    image: "human.png"
   },
   {
     id: 3,
     title: "科学的 CBT 疗法",
     description: "我们的所有情绪调节练习均基于严格的认知行为疗法（CBT）临床心理学研究，确保您获得的每一次帮助都是专业且有效的。",
     highlight: "临床验证有效的心理学工具",
-    image: "5.jpg"
+    image: "cbt.png"
   },
   {
     id: 4,
     title: "零压力的对话交互",
     description: "摒弃了繁琐的问卷和冰冷的测试，友好的对话式界面让心理疗愈变得就像和一位懂你的老朋友聊天一样自然轻松。",
     highlight: "极简设计，零使用门槛",
-    image: "5.jpg"
+    image: "pressure.png"
   },
   {
     id: 5,
     title: "极具性价比的选择",
     description: "打破传统心理咨询动辄成百上千的高昂门槛，我们致力于让每一位需要帮助的人，都能以极低的成本负担得起优质的服务。",
     highlight: "让心理健康服务惠及每个人",
-    image: "6.jpg"
+    image: "1.jpg"
   }
 ];
 
@@ -841,7 +839,7 @@ const WhyChooseUsSection = () => {
             </p>
           </div>
 
-          <div className="w-[450px] h-[350px] bg-wysa-pink rounded-[120px] flex items-center justify-center shadow-inner border-[10px] border-white/20 overflow-hidden flex-shrink-0">
+          <div className="w-[500px] h-[380px] bg-wysa-pink rounded-[100px] flex items-center justify-center shadow-inner border-[10px] border-white/20 overflow-hidden flex-shrink-0">
              <img
                src={current.image}
                alt={current.title}
@@ -1097,19 +1095,31 @@ const AuthModal = ({ isOpen, onClose }) => {
   );
 };
 // ==========================================
+// 10.5 滚动渐弱包裹组件
+// ==========================================
+function FadeSection({ children }) {
+  const ref = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ['start end', 'end start']
+  });
+  const smooth = useSpring(scrollYProgress, { stiffness: 60, damping: 20, mass: 0.5 });
+  const opacity = useTransform(smooth, [0, 0.25, 0.75, 1], [0.1, 1, 1, 0.1]);
+  const scale = useTransform(smooth, [0, 0.25, 0.75, 1], [0.9, 1, 1, 0.9]);
+  const y = useTransform(smooth, [0, 0.25, 0.75, 1], [80, 0, 0, -80]);
+
+  return (
+    <motion.div ref={ref} style={{ opacity, scale, y }}>
+      {children}
+    </motion.div>
+  );
+}
+
+// ==========================================
 // 11. 主页面组件 (Home)
 // ==========================================
 function Home() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-
-  // 初始化滚动动画库 AOS
-  useEffect(() => {
-    AOS.init({
-      duration: 1000,
-      once: false,
-      mirror: true,
-    });
-  }, []);
 
   return (
     <ClickSpark
@@ -1125,25 +1135,25 @@ function Home() {
         <main>
           <HeroSection />
 
-          <div data-aos="fade-up">
+          <FadeSection>
             <CbtSection />
-          </div>
+          </FadeSection>
 
-          <div data-aos="fade-right">
+          <FadeSection>
             <ServeForSection />
-          </div>
+          </FadeSection>
 
-          <div data-aos="zoom-in">
+          <FadeSection>
             <FeaturesSection />
-          </div>
+          </FadeSection>
 
-          <div data-aos="fade-up">
+          <FadeSection>
             <WhyChooseUsSection />
-          </div>
+          </FadeSection>
 
-          <div data-aos="fade-in">
+          <FadeSection>
             <FeedbackSection />
-          </div>
+          </FadeSection>
         </main>
 
         {/* 页脚 */}

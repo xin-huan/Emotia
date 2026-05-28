@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import GooeyNav from './GooeyNav';
 
 const navItems = [
-  { label: '首页', href: '/' },
+  { label: '首页', href: '/home' },
   { label: '认识', href: '/about' },
   { label: '互动论坛', href: '/interactive' },
   { label: 'Agent互动', href: '/agent' },
@@ -18,11 +18,19 @@ const Navbar = ({ onLoginClick, user, onLogout }) => {
 
   return (
     <nav className="fixed top-0 left-0 w-full bg-wysa-green px-12 md:px-24 py-3 flex items-center justify-between z-50 shadow-md">
-      <div
-        className="text-3xl font-extrabold text-white cursor-pointer"
-        onClick={() => navigate('/')}
-      >
-        Emotia
+      <div className="flex items-center gap-4">
+        <div
+          className="text-3xl font-extrabold text-white cursor-pointer"
+          onClick={() => navigate('/home')}
+        >
+          Emotia
+        </div>
+        <button
+          onClick={() => navigate('/')}
+          className="text-white/50 hover:text-white text-xs border border-white/20 rounded-full px-3 py-0.5 hover:border-white/40 transition-all"
+        >
+          ✦ Intro
+        </button>
       </div>
 
       <div className="flex-1 flex justify-center text-sm font-medium relative">

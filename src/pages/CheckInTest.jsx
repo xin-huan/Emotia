@@ -145,7 +145,7 @@ const CheckInTest = () => {
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
 
         {/* ================= 模块 1：情绪打卡面板 ================= */}
-        <div className="quest-card" style={{ textAlign: 'center' }}>
+        <div data-aos="zoom-in-up" data-aos-easing="ease-out-back" data-aos-duration="700" className="quest-card" style={{ textAlign: 'center' }}>
           <h3 className="quest-title">今日能量检测</h3>
           <p style={{ color: '#666', fontSize: '14px' }}>
             {hasCheckedIn ? "✅ 今日已完成检测，干得漂亮！" : "指挥官，请评估您今天的精神状态（每日限1次）："}
@@ -186,7 +186,7 @@ const CheckInTest = () => {
         </div>
 
         {/* ================= 模块 2+3：并排：日常任务 + 阳光储蓄罐 ================= */}
-        <div style={{ display: 'flex', gap: '20px' }}>
+        <div data-aos="zoom-in-up" data-aos-easing="ease-out-back" data-aos-duration="700" data-aos-delay="100" style={{ display: 'flex', gap: '20px' }}>
 
           {/* 左：游戏化任务看板 */}
           <div className="quest-card" style={{ flex: 1 }}>

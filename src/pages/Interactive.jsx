@@ -9,6 +9,7 @@ import CircularGallery from '../components/CircularGallery';
 const MOCK_ARTICLES = [
   {
     id: 1,
+    image: '/屏幕截图 2026-05-25 110948.png',
     title: '探索心灵的秘密：情绪急救指南',
     author: '心理学专家 Sarah',
     date: '2023-10-01',
@@ -29,6 +30,7 @@ const MOCK_ARTICLES = [
   },
   {
     id: 2,
+    image: '/屏幕截图 2026-05-25 111354.png',
     title: '告别内耗：如何建立健康的心理边界',
     author: '资深咨询师 李明',
     date: '2023-10-05',
@@ -48,6 +50,7 @@ const MOCK_ARTICLES = [
   },
   {
     id: 3,
+    image: '/屏幕截图 2026-05-25 111536.png',
     title: '正念冥想：每天 10 分钟重塑大脑结构',
     author: '神经科学研究员 Anna',
     date: '2023-10-12',
@@ -65,6 +68,7 @@ const MOCK_ARTICLES = [
   },
   {
     id: 4,
+    image: '/屏幕截图 2026-05-25 112029.png',
     title: '职场生存术：如何应对有毒的工作环境',
     author: '职业心理辅导员 王强',
     date: '2023-10-18',
@@ -84,6 +88,7 @@ const MOCK_ARTICLES = [
   },
   {
     id: 5,
+    image: '/屏幕截图 2026-05-25 112116.png',
     title: '改善睡眠：找回自然入睡的本能',
     author: '睡眠医学专家 陈医生',
     date: '2023-10-22',
@@ -100,6 +105,7 @@ const MOCK_ARTICLES = [
   },
   {
     id: 6,
+    image: '/屏幕截图 2026-05-25 112741.png',
     title: '自我同情：像对待好朋友一样对待自己',
     author: '临床心理学博士 Lin',
     date: '2023-10-28',
@@ -147,6 +153,50 @@ const FEEDBACKS = [
   { id: 6, name: '张凌赫', title: '心理健康督导师', avatar: '/Q.png', quote: '粉色基调与温暖光效结合，让整个互动页面更有治愈感。粉色基调与温暖光效结合，让整个互动页面更有治愈感。' },
 ];
 
+// 猜你想问 FAQ 数据
+const FAQ_DATA = [
+  {
+    id: 1,
+    q: '如何使用 Emotia 进行第一次心理咨询？',
+    a: '点击导航栏的「Agent互动」，选择一杯喜欢的饮品，系统会为你冲泡一杯虚拟饮品并自动进入对话。你可以像和朋友聊天一样，向 AI 倾诉你的困扰，Agent 会在对话中运用 CBT 技术帮你梳理情绪。'
+  },
+  {
+    id: 2,
+    q: '我的聊天记录会被保存或泄露吗？',
+    a: '绝对不会。Emotia 采用严格的匿名机制，你无需提供真实姓名。所有对话记录仅保存在你自己的账户下，你可以随时在「个人空间」中查看或删除历史会话。'
+  },
+  {
+    id: 3,
+    q: '心理测评的结果准确吗？我能信吗？',
+    a: '所有测评量表均来自国际通用的心理学标准量表（如 PHQ-9、GAD-7 等），数据仅供参考和自我觉察，不能替代专业诊断。如果结果显示中度及以上风险，建议预约我们的专家进行进一步评估。'
+  },
+  {
+    id: 4,
+    q: '如何在社区发布问题或回复他人？',
+    a: '在「互动论坛」页面，点击 coral 色的 + 圆形按钮即可发布新问题。点击任意问题卡片可进入详情页查看和发表回复。你的每一次发言都是匿名的。'
+  },
+  {
+    id: 5,
+    q: '阳光储蓄罐是什么？怎么使用？',
+    a: '阳光储蓄罐是 Emotia 的积极心理学工具。在「活动打卡」页面，记录下每天发生的一件好事（哪怕是一杯好喝的奶茶），系统会帮你收集这些"阳光"，日积月累形成你的正向记忆库。'
+  },
+  {
+    id: 6,
+    q: 'Emotia 是免费的吗？',
+    a: 'Emotia 的基础功能（AI 对话、心理测评、社区互动、阳光储蓄罐）完全免费开放。部分专家一对一咨询为付费服务，具体价格可在预约时查看。我们的使命是让每个人都能负担得起优质的心理健康服务。'
+  },
+  {
+    id: 7,
+    q: 'CBT 疗法适合我吗？有没有副作用？',
+    a: 'CBT（认知行为疗法）适用于大多数轻至中度情绪困扰的人群，包括焦虑、抑郁、压力管理等。它不像药物有生理副作用，但过程中可能需要你直面一些不舒服的想法——这正是改变的开始。如果症状严重，建议结合专业医师指导。'
+  },
+  {
+    id: 8,
+    q: '我可以删除我的账号和数据吗？',
+    a: '当然可以。在「个人空间」页面，你可以随时删除单条对话记录、测评历史或阳光日记。如需彻底注销账号，请联系客服 hello@emotia.com，我们会在 48 小时内清除你的所有数据。'
+  },
+];
+
 const Interactive = () => {
   const [searchParams] = useSearchParams();
 
@@ -170,6 +220,17 @@ const Interactive = () => {
   const [hasNewMessage, setHasNewMessage] = useState(true);
   const [postSuccess, setPostSuccess] = useState('');
   const [showToast, setShowToast] = useState(false);
+
+  // 预约咨询
+  const [bookingExpert, setBookingExpert] = useState(null);
+  const [bookingForm, setBookingForm] = useState({ name: '', email: '', phone: '', date: '', time: '', message: '' });
+
+  // 发布问题弹窗
+  const [showPublishModal, setShowPublishModal] = useState(false);
+  const [publishText, setPublishText] = useState('');
+
+  // 猜你想问
+  const [openFaqId, setOpenFaqId] = useState(null);
 
 
   // ==========================================
@@ -215,8 +276,8 @@ const formatData = (rawList, likedIds = []) => {
     try {
       // 🚀 同时请求最新(3条)和热榜(10条)
       const [resLatest, resHot] = await Promise.all([
-        fetch(`http://localhost:8000/api/forum/posts?sort=latest&viewer_id=${userId}`),
-        fetch(`http://localhost:8000/api/forum/posts?sort=hot&viewer_id=${userId}`)
+        fetch(`http://localhost:8000/api/forum/posts?sort=latest&limit=6&viewer_id=${userId}`),
+        fetch(`http://localhost:8000/api/forum/posts?sort=hot&limit=10&viewer_id=${userId}`)
       ]);
 
       const [jsonLatest, jsonHot] = await Promise.all([resLatest.json(), resHot.json()]);
@@ -242,7 +303,7 @@ const formatData = (rawList, likedIds = []) => {
     const userId = localStorage.getItem('user_id');
     setIsRefreshing(true);
     try {
-      const res = await fetch('http://localhost:8000/api/forum/posts?sort=random&limit=5');
+      const res = await fetch('http://localhost:8000/api/forum/posts?sort=random&limit=6');
       const data = await res.json();
 
       if (data.posts) {
@@ -304,8 +365,9 @@ const formatData = (rawList, likedIds = []) => {
   }, [selectedQuestion]);
 
   // 🚀 发布问题
-  const handlePostQuestion = async () => {
-    if (!questionText.trim()) return;
+  const handlePostQuestion = async (textOverride) => {
+    const text = (textOverride || questionText).trim();
+    if (!text) return;
     const userId = localStorage.getItem('user_id');
     if (!userId) return alert("请先登录");
 
@@ -315,8 +377,8 @@ const formatData = (rawList, likedIds = []) => {
       body: JSON.stringify({
         user_id: userId,
         category_id: 1,
-        title: questionText.substring(0, 15),
-        content: questionText
+        title: text.substring(0, 15),
+        content: text
       })
     });
     if(res.ok) {
@@ -452,7 +514,7 @@ const formatData = (rawList, likedIds = []) => {
           )}
 
         {/* ================= 模块一：最新文章 ================= */}
-        <section className="mb-16">
+        <section data-aos="zoom-in-up" data-aos-duration="700" data-aos-once="false" data-aos-mirror="true" className="mb-16">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-wysa-green flex items-center gap-2">
               <span className="text-wysa-coral">✦</span> 最新文章
@@ -460,8 +522,8 @@ const formatData = (rawList, likedIds = []) => {
           </div>
           <div className="w-full h-[480px] pointer-events-auto relative -mt-15">
             <CircularGallery
-              items={MOCK_ARTICLES.map((article, i) => ({
-                image: `/${i + 1}.jpg`,
+              items={MOCK_ARTICLES.map((article) => ({
+                image: article.image,
                 text: article.title,
                 originalData: article
               }))}
@@ -472,111 +534,161 @@ const formatData = (rawList, likedIds = []) => {
           </div>
         </section>
 
-          {/* ================= 模块二：社区问答 ================= */}
-          <section className="mb-16">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* ================= 模块 1.5：猜你想问 ================= */}
+          <section data-aos="zoom-in-up" data-aos-duration="700" data-aos-once="false" data-aos-mirror="true" className="mb-16">
+            <h2 className="text-2xl font-bold text-wysa-green flex items-center gap-2 mb-6">
+              <span className="text-wysa-coral">✦</span> 猜你想问
+            </h2>
 
-              {/* 左侧：问答流 & 提问框 */}
-              <div className="lg:col-span-2 space-y-6">
-                <h2 className="text-2xl font-bold text-wysa-green flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-wysa-coral">✦</span> 社区问答
+          <div className="flex gap-8">
+            {/* 左侧：图片 */}
+            <div className="hidden md:block w-[35%] shrink-0">
+              <div className="w-full aspect-[3/4] bg-wysa-pink/60 rounded-[40px] flex items-center justify-center overflow-hidden sticky top-28">
+                <img src="/屏幕截图 2026-05-25 135935.png" alt="猜你想问" className="w-full h-full object-cover" />
+              </div>
+            </div>
+
+            {/* 右侧：问题竖排 */}
+            <div className="flex-1 space-y-2.5">
+              {FAQ_DATA.map((faq) => (
+                <div
+                  key={faq.id}
+                  onClick={() => setOpenFaqId(openFaqId === faq.id ? null : faq.id)}
+                  className={`pointer-events-auto bg-wysa-pink rounded-2xl p-4 border cursor-pointer transition-all duration-300 hover:shadow-md flex flex-col
+                    ${openFaqId === faq.id ? 'border-wysa-coral shadow-lg ring-2 ring-wysa-coral/20' : 'border-gray-100 shadow-sm'}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-bold text-wysa-green leading-snug">
+                      {faq.q}
+                    </p>
+                    <span className={`shrink-0 text-wysa-coral transition-transform duration-300 text-lg ${openFaqId === faq.id ? 'rotate-45' : ''}`}>
+                      +
+                    </span>
                   </div>
-                </h2>
-
-                <div className="pointer-events-auto bg-wysa-pink backdrop-blur-md rounded-3xl p-6 border border-white/50 shadow-sm">
-                  <textarea
-                    value={questionText}
-                    onChange={(e) => setQuestionText(e.target.value)}
-                    
-                    placeholder="此刻你在想什么？提出你的困惑..."
-                    className="w-full bg-white rounded-xl p-4 text-wysa-green placeholder-wysa-green/40 outline-none focus:ring-2 focus:ring-wysa-coral/50 resize-none transition-all"
-                    rows={3}
-                  />
-                  <div className="flex justify-end mt-4">
-                    <button
-                      onClick={handlePostQuestion}
-                      className="bg-wysa-coral hover:bg-wysa-green text-white px-6 py-2 rounded-full font-bold transition-transform hover:scale-105 shadow-sm"
-                    >
-                      发布问题
-                    </button>
+                  <div
+                    className={`grid transition-all duration-300 ease-in-out ${
+                      openFaqId === faq.id ? 'grid-rows-[1fr] opacity-100 mt-3 pt-3 border-t border-gray-100' : 'grid-rows-[0fr] opacity-0'
+                    }`}
+                  >
+                    <div className="overflow-hidden">
+                      <p className="text-sm text-wysa-green/70 leading-relaxed">{faq.a}</p>
+                    </div>
                   </div>
                 </div>
+              ))}
+            </div>
+          </div>
+          </section>
 
-                <div className="space-y-4 relative">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-2xl font-bold text-wysa-green">最新问题</span>
-                    <button
-                      onClick={handleRefreshLatest}
-                      disabled={isRefreshing}
-                      className="pointer-events-auto text-sm text-wysa-coral hover:text-wysa-green flex items-center gap-1 transition-colors"
-                    >
-                      <span className={isRefreshing ? "animate-spin" : ""}>↻</span> 换一批
-                    </button>
-                  </div>
+          {/* ================= 模块二：社区问答 ================= */}
+          <section data-aos="zoom-in-up" data-aos-duration="700" data-aos-once="false" data-aos-mirror="true" data-aos-delay="100" className="mb-16">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-wysa-green flex items-center gap-2">
+                <span className="text-wysa-coral">✦</span> 社区问答
+              </h2>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleRefreshLatest}
+                  disabled={isRefreshing}
+                  className="pointer-events-auto text-sm text-wysa-coral hover:text-wysa-green flex items-center gap-1 transition-colors"
+                >
+                  <span className={isRefreshing ? "animate-spin" : ""}>↻</span> 换一批
+                </button>
+              </div>
+            </div>
 
-                  {latestQuestions.map((q) => (
-                    <div
-                      key={q.id}
-                      onClick={() => setSelectedQuestion(q)}
-                      className="pointer-events-auto bg-wysa-pink backdrop-blur-sm rounded-2xl p-5 border border-white/30 hover:bg-white/50 transition-colors cursor-pointer group"
-                    >
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="w-8 h-8 rounded-full bg-wysa-coral text-white flex items-center justify-center text-xs font-bold">{q.avatar}</div>
-                        <span className="text-sm font-bold text-wysa-coral/80">{q.author}</span>
-                      </div>
-                      <p className="text-wysa-green font-normal">
+            {/* 问题卡片网格 + 发布按钮 */}
+            <div className="relative">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {latestQuestions.map((q) => (
+                  <div
+                    key={q.id}
+                    onClick={() => setSelectedQuestion(q)}
+                    className="pointer-events-auto bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer group flex flex-col"
+                  >
+                    {/* 卡片封面 = 标题 */}
+                    <div className="bg-wysa-coral/20 px-5 py-4 border-b border-wysa-coral/10">
+                      <p className="text-wysa-green font-bold text-sm leading-snug line-clamp-2 group-hover:text-wysa-coral transition-colors">
                         {q.content}
                       </p>
-
-                      <div className="flex gap-6 mt-4 text-sm font-medium">
+                    </div>
+                    {/* 卡片底部信息 */}
+                    <div className="px-5 py-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-wysa-coral text-white flex items-center justify-center text-xs font-bold">{q.avatar}</div>
+                        <span className="text-xs font-medium text-wysa-green/60">{q.author}</span>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs">
                         <button
                           onClick={(e) => handleToggleLike(e, q.id)}
-                          className={`flex items-center gap-1 transition-colors ${q.isLiked ? 'text-red-500' : 'text-wysa-green hover:text-red-400'}`}
+                          className={`flex items-center gap-1 transition-colors ${q.isLiked ? 'text-red-500' : 'text-wysa-green/50 hover:text-red-400'}`}
                         >
-                          {q.isLiked ? '❤️' : '♡'} 共鸣 {q.likes > 0 ? `(${q.likes})` : ''}
+                          {q.isLiked ? '❤️' : '♡'} {q.likes || ''}
                         </button>
-                        <button className="text-wysa-green hover:text-wysa-coral flex items-center gap-1">
-                          💬 讨论 ({q.commentsCount})
-                        </button>
+                        <span className="text-wysa-green/50">💬 {q.commentsCount}</span>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
 
-              {/* 右侧：热度排行榜 */}
-              <div className="lg:col-span-1">
-                <div className="pointer-events-auto bg-wysa-pink backdrop-blur-md rounded-3xl p-6 border border-white/50 h-full">
-                  <h3 className="text-xl font-bold text-wysa-green mb-6 flex items-center gap-2">
-                    🔥 讨论热榜
-                  </h3>
-                  <ul className="space-y-4">
-                    {hotQuestions.map((topic, index) => (
-                      <li
-                        key={topic.id}
-                        onClick={() => setSelectedQuestion(topic)}
-                        className="flex items-start gap-3 group cursor-pointer"
-                      >
-                        <span className={`font-black text-lg mt-0.5 ${index < 3 ? 'text-wysa-coral' : 'text-wysa-green/50'}`}>
-                          {index + 1}
-                        </span>
-                        <div>
-                          <p className="text-wysa-green font-medium group-hover:text-wysa-coral transition-colors line-clamp-2">
-                            {topic.content}
-                          </p>
-                          <span className="text-xs text-wysa-green/80">🔥 {topic.hotScore} 热度</span>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+              {/* coral + 圆圈发布按钮 */}
+              <div className="flex justify-center mt-8">
+                <button
+                  onClick={() => { setPublishText(''); setShowPublishModal(true); }}
+                  className="pointer-events-auto w-14 h-14 bg-wysa-green hover:bg-wysa-coral rounded-full flex items-center justify-center text-white text-3xl font-light shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300"
+                  title="发布新问题"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            {/* 讨论热榜 - 微博热搜风格 */}
+            <div className="mt-10 pointer-events-auto bg-wysa-pink rounded-3xl p-6 border border-gray-100 shadow-sm">
+              <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                <span className="text-lg font-extrabold text-wysa-coral">🔥</span>
+                <h3 className="text-lg font-extrabold text-wysa-green">讨论热榜</h3>
+                <span className="text-[10px] text-gray-400 ml-auto">实时更新</span>
+              </div>
+              <div className="space-y-0">
+                {hotQuestions.map((topic, index) => (
+                  <div
+                    key={topic.id}
+                    onClick={() => setSelectedQuestion(topic)}
+                    className="flex items-center gap-3 py-3 px-2 -mx-2 rounded-xl hover:bg-wysa-pink/30 cursor-pointer transition-colors group"
+                  >
+                    <span className={`shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black text-white
+                      ${index === 0 ? 'bg-wysa-coral' :
+                        index === 1 ? 'bg-wysa-coral/80' :
+                        index === 2 ? 'bg-wysa-coral/60' :
+                        index === 3 ? 'bg-wysa-coral/45' :
+                        index === 4 ? 'bg-wysa-coral/35' :
+                        'bg-wysa-coral/20'}`}>
+                      {index + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-wysa-green font-medium truncate group-hover:text-wysa-coral transition-colors">
+                        {topic.content}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-[10px] font-bold text-gray-400">
+                      {topic.hotScore > 100 ? (
+                        <span className="text-red-500 bg-red-50 px-1.5 py-0.5 rounded">爆</span>
+                      ) : topic.hotScore > 50 ? (
+                        <span className="text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded">热</span>
+                      ) : (
+                        <span className="text-gray-400">{topic.hotScore} 热度</span>
+                      )}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           </section>
 
           {/* ================= 模块三：专业反馈总结 ================= */}
-          <section>
+          <section data-aos="zoom-in-up" data-aos-duration="700" data-aos-once="false" data-aos-mirror="true" data-aos-delay="200">
             <h2 className="text-2xl font-bold text-wysa-green mb-6 flex items-center gap-2">
               <span className="text-wysa-coral">✦</span> 专家评价与咨询
             </h2>
@@ -599,7 +711,7 @@ const formatData = (rawList, likedIds = []) => {
                     <button
                       type="button"
                       className="w-full rounded-full bg-wysa-coral py-3 text-white font-semibold transition hover:bg-wysa-green"
-                      onClick={() => alert('预约咨询功能待接入')}
+                      onClick={() => { setBookingExpert(fb); setBookingForm({ name: '', email: '', phone: '', date: '', time: '', message: '' }); }}
                     >
                       预约咨询
                     </button>
@@ -710,6 +822,122 @@ const formatData = (rawList, likedIds = []) => {
         </div>
       )}
     </div>
+
+      {/* ================= 弹窗：发布问题 ================= */}
+      {showPublishModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 pointer-events-auto">
+          <div className="absolute inset-0 bg-wysa-green/40 backdrop-blur-sm" onClick={() => setShowPublishModal(false)} />
+          <div className="relative bg-white w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden">
+            <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
+              <h3 className="text-lg font-extrabold text-wysa-green flex items-center gap-2">
+                <span className="text-wysa-coral">✦</span> 说出你的心声
+              </h3>
+              <button onClick={() => setShowPublishModal(false)} className="text-gray-400 hover:text-wysa-green bg-gray-50 hover:bg-wysa-green/10 rounded-full w-8 h-8 flex items-center justify-center transition-colors">✕</button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-500 mb-4">在这里，每一次倾诉都会被温柔对待 🤲</p>
+              <textarea
+                value={publishText}
+                onChange={(e) => setPublishText(e.target.value)}
+                placeholder="此刻你在想什么？提出你的困惑..."
+                className="w-full bg-wysa-pink/50 rounded-2xl p-5 text-wysa-green placeholder-wysa-green/40 outline-none focus:ring-2 focus:ring-wysa-coral/30 resize-none text-sm min-h-[140px] transition-all"
+              />
+              <div className="flex justify-end mt-4 gap-3">
+                <button
+                  onClick={() => setShowPublishModal(false)}
+                  className="px-5 py-2.5 rounded-full text-sm text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={() => {
+                    if (!publishText.trim()) return;
+                    handlePostQuestion(publishText);
+                    setPublishText('');
+                    setShowPublishModal(false);
+                  }}
+                  disabled={!publishText.trim()}
+                  className={`px-6 py-2.5 rounded-full font-bold text-sm transition-all shadow-sm ${
+                    publishText.trim()
+                      ? 'bg-wysa-coral text-white hover:bg-wysa-green'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  发布问题
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= 弹窗：预约咨询表单 ================= */}
+      {bookingExpert && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 pointer-events-auto">
+          <div className="absolute inset-0 bg-wysa-green/40 backdrop-blur-sm" onClick={() => setBookingExpert(null)} />
+          <div className="relative bg-white w-full max-w-lg max-h-[85vh] rounded-[2rem] shadow-2xl overflow-hidden flex flex-col">
+            <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10">
+              <div>
+                <span className="text-sm font-bold text-wysa-green bg-wysa-green/10 px-3 py-1 rounded-full">预约咨询</span>
+              </div>
+              <button onClick={() => setBookingExpert(null)} className="text-gray-400 hover:text-wysa-green bg-gray-50 hover:bg-wysa-green/10 rounded-full w-8 h-8 flex items-center justify-center transition-colors">✕</button>
+            </div>
+            <div className="p-6 overflow-y-auto">
+              <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
+                <img src={bookingExpert.avatar} alt={bookingExpert.name} className="w-16 h-16 rounded-full object-cover border-2 border-wysa-coral/30" />
+                <div>
+                  <h3 className="text-lg font-bold text-wysa-green">{bookingExpert.name}</h3>
+                  <p className="text-sm text-gray-500">{bookingExpert.title}</p>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-600 mb-1.5">姓名</label>
+                  <input type="text" value={bookingForm.name} onChange={(e) => setBookingForm({...bookingForm, name: e.target.value})} placeholder="您的真实姓名" className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-wysa-coral focus:ring-2 focus:ring-wysa-coral/10 text-sm transition-all" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-600 mb-1.5">邮箱</label>
+                  <input type="email" value={bookingForm.email} onChange={(e) => setBookingForm({...bookingForm, email: e.target.value})} placeholder="hello@example.com" className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-wysa-coral focus:ring-2 focus:ring-wysa-coral/10 text-sm transition-all" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-600 mb-1.5">手机号</label>
+                  <input type="tel" value={bookingForm.phone} onChange={(e) => setBookingForm({...bookingForm, phone: e.target.value})} placeholder="方便我们与您联系" className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-wysa-coral focus:ring-2 focus:ring-wysa-coral/10 text-sm transition-all" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-600 mb-1.5">期望日期</label>
+                    <input type="date" value={bookingForm.date} onChange={(e) => setBookingForm({...bookingForm, date: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-wysa-coral focus:ring-2 focus:ring-wysa-coral/10 text-sm transition-all" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-600 mb-1.5">期望时间</label>
+                    <select value={bookingForm.time} onChange={(e) => setBookingForm({...bookingForm, time: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-wysa-coral focus:ring-2 focus:ring-wysa-coral/10 text-sm transition-all bg-white">
+                      <option value="">请选择</option>
+                      <option value="09:00">09:00 - 10:00</option>
+                      <option value="10:00">10:00 - 11:00</option>
+                      <option value="11:00">11:00 - 12:00</option>
+                      <option value="14:00">14:00 - 15:00</option>
+                      <option value="15:00">15:00 - 16:00</option>
+                      <option value="16:00">16:00 - 17:00</option>
+                      <option value="19:00">19:00 - 20:00</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-600 mb-1.5">咨询简述</label>
+                  <textarea value={bookingForm.message} onChange={(e) => setBookingForm({...bookingForm, message: e.target.value})} placeholder="请简要描述您希望咨询的方向或困扰..." rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-wysa-coral focus:ring-2 focus:ring-wysa-coral/10 text-sm transition-all resize-none" />
+                </div>
+                <button
+                  onClick={() => { alert(`已成功预约 ${bookingExpert.name}！\n我们会在 24 小时内通过您留下的联系方式与您确认具体时间。`); setBookingExpert(null); }}
+                  className="w-full py-3.5 rounded-full bg-wysa-coral text-white font-bold text-lg hover:bg-wysa-green transition-all shadow-lg hover:shadow-xl"
+                >
+                  确认预约
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </ClickSpark>
   );
 };

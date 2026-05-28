@@ -72,6 +72,7 @@ export default function ProfileFullDemo() {
   const [activeTab, setActiveTab] = useState('sessions');
   const [data, setData] = useState({ sessions: [], tests: [], notifs: [] });
   const [sessionDetail, setSessionDetail] = useState(null);
+  const contentRef = React.useRef(null);
 
   const userId = localStorage.getItem('user_id');
   const API_BASE = "http://localhost:8000/api";
@@ -83,6 +84,11 @@ export default function ProfileFullDemo() {
   const [emotionHistory, setEmotionHistory] = useState([]);
   const [sunshineHistory, setSunshineHistory] = useState([]);
   const [achievements, setAchievements] = useState({});
+
+  // 切换 tab 时回到内容顶部
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeTab]);
 
   useEffect(() => {
     if (userId) {
@@ -178,7 +184,7 @@ export default function ProfileFullDemo() {
       <div className="max-w-6xl w-full flex gap-8">
 
         {/* --- 左侧：导航菜单 --- */}
-        <div className="w-64 space-y-4 sticky top-28 self-start">
+        <div data-aos="fade-right" className="w-64 space-y-4 sticky top-28 self-start">
           <div className="bg-white p-6 rounded-[2rem] shadow-sm text-center mb-6 border border-pink-50">
              <div className="text-4xl mb-2">🧑‍🚀</div>
              <p className="font-black text-wysa-green uppercase tracking-tighter">My Mind Space</p>
@@ -193,7 +199,7 @@ export default function ProfileFullDemo() {
         </div>
 
         {/* --- 右侧：内容区 --- */}
-        <div className="flex-1 space-y-8 pb-20">
+        <div ref={contentRef} data-aos="fade-left" className="flex-1 space-y-8 pb-20">
 
           {/* TAB 1: 疗愈回溯 */}
           {activeTab === 'sessions' && (
