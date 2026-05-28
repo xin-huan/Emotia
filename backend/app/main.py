@@ -15,6 +15,8 @@ from datetime import datetime, timedelta, timezone
 # 导入你的包装器和数据库
 from agent.core import process_cbt_chat
 from app.database import supabase  # 确保你有这个文件
+# 🚀 1. 引入管理员路由模块
+from app import main_admin
 
 app = FastAPI(title="MindFlow CBT API")
 
@@ -27,6 +29,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 🚀 全局内存词库：为了快，我们不直接在 API 里查数据库
+SENSITIVE_SET = set()
+
+@app.on_event("startup")
+async def load_sensitive_words():
+    """服务器启动时，把数据库里的词全部加载到内存 Set 中"""
+    print("⏳ 正在加载敏感词库到内存...")
+    res = supabase.table("sensitive_words").select("word").execute()
+    global SENSITIVE_SET
+    SENSITIVE_SET = {row['word'] for row in res.data}
+    print(f"✅ 词库加载完毕，共 {len(SENSITIVE_SET)} 个词")
 
 # ======= 数据模型定义 =======
 
@@ -274,8 +287,18 @@ def create_post(post: PostCreate):
         # 防御 undefined 字符串
         if post.user_id == "undefined" or not post.user_id:
             raise HTTPException(status_code=401, detail="未登录或用户身份无效")
-            
+        # [新增检测逻辑] 变量名 data 和 res 保持完全不动
+        post_status = "normal"
+        full_text = post.title + post.content
+        
+        # 极速扫描内存中的 Set
+        for word in SENSITIVE_SET:
+            if word in full_text:
+                post_status = "flagged" # 命中则标记为待审核
+                break
         data = post.dict()
+        # [新增] 将扫描结果注入字典，存入数据库的 status 列
+        data["status"] = post_status 
         res = supabase.table("forum_posts").insert(data).execute()
         return {"status": "success", "data": res.data}
     except Exception as e:
