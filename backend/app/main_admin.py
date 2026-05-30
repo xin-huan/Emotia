@@ -117,7 +117,7 @@ async def sync_sensitive_words(req: SyncWordsRequest):
     batch_size = 500
     for i in range(0, len(words), batch_size):
         batch = [{"word": w} for w in words[i:i + batch_size]]
-        supabase.table("sensitive_words").upsert(batch).execute()
+        supabase.table("sensitive_words").upsert(batch,on_conflict="word").execute()
         
     return {"status": "success", "count": len(words)}
 
