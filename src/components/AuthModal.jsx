@@ -28,14 +28,16 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
 
         // 1. 存入本地
         localStorage.setItem('user_id', userData.user_id);
-        localStorage.setItem('user_email', email); // 额外存一下邮箱显示名字用
+        localStorage.setItem('user_email', email);
+        localStorage.setItem('user_role', userData.role || 'user');
 
         alert(`${isLogin ? '登录' : '注册'}成功！`);
 
-        // 2. 通知父组件更新状态，不再需要强制刷新页面
+        // 2. 通知父组件更新状态
         if (onLoginSuccess) {
-          onLoginSuccess({ user_id: userData.user_id, email: email });
+          onLoginSuccess({ user_id: userData.user_id, email: email, role: userData.role || 'user' });
         }
+
         onClose();
       } else {
         alert(resData.detail || resData.message || '操作失败，请重试');

@@ -4,14 +4,37 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
-  const [riskPosts, setRiskPosts] = useState([]); // 🚀 存储待审核/风险帖子
+  const [riskPosts, setRiskPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncLoading, setSyncLoading] = useState(false);
   const [riskData, setRiskData] = useState({ posts: [], answers: [] });
-  const [activeTab, setActiveTab] = useState('overview'); // overview | users | moderation
+  const [activeTab, setActiveTab] = useState('overview');
   const API_BASE = "http://localhost:8000/api/admin";
   const [allTests, setAllTests] = useState([]);
 
+  const userId = localStorage.getItem('user_id');
+  const authHeaders = { 'Content-Type': 'application/json', 'x-user-id': userId || '' };
+
+  // 管理员身份校验：非管理员自动踢出
+  useEffect(() => {
+    const checkAdmin = async () => {
+      try {
+        const res = await fetch(`http://localhost:8000/api/user/role/${userId}`);
+        const data = await res.json();
+        if (data.role !== 'admin') {
+          alert('无权访问：仅限管理员');
+          window.location.href = '/home';
+        }
+      } catch {
+        window.location.href = '/home';
+      }
+    };
+    if (!userId) {
+      window.location.href = '/home';
+      return;
+    }
+    checkAdmin();
+  }, []);
 
   // 初始化加载
   useEffect(() => {
@@ -30,13 +53,13 @@ export default function AdminDashboard() {
   }, []);
 
   const fetchStats = async () => {
-    const res = await fetch(`${API_BASE}/dashboard/stats`);
+    const res = await fetch(`${API_BASE}/dashboard/stats`, { headers: authHeaders });
     const data = await res.json();
     setStats(data);
   };
 
   const fetchUsers = async () => {
-    const res = await fetch(`${API_BASE}/users`);
+    const res = await fetch(`${API_BASE}/users`, { headers: authHeaders });
     const data = await res.json();
     setUsers(data || []);
   };
@@ -44,7 +67,7 @@ export default function AdminDashboard() {
   const fetchTestsAdmin = async () => {
     console.log("🌊 开始请求全量表数据...");
     try {
-      const res = await fetch(`${API_BASE}/tests`);
+      const res = await fetch(`${API_BASE}/tests`, { headers: authHeaders });
       console.log("📡 网络响应状态:", res.status);
       
       const data = await res.json();
@@ -59,7 +82,7 @@ export default function AdminDashboard() {
   const handleToggleTest = async (tid, currentStatus) => {
     const res = await fetch(`http://localhost:8000/api/admin/tests/toggle`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders,
       body: JSON.stringify({ test_id: tid, is_active: !currentStatus })
     });
     if (res.ok) {
@@ -71,7 +94,7 @@ export default function AdminDashboard() {
 
   const fetchRiskData = async () => {
     try {
-      const res = await fetch(`${API_BASE}/risk-items`);
+      const res = await fetch(`${API_BASE}/risk-items`, { headers: authHeaders });
       const data = await res.json();
       // 🚀 这里的 data 格式应该是 { posts: [...], answers: [...] }
       setRiskData(data || { posts: [], answers: [] });
@@ -85,7 +108,7 @@ export default function AdminDashboard() {
     try {
       const res = await fetch(`${API_BASE}/posts/review`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders,
         body: JSON.stringify({ post_id: pid, action,target_type: type })
       });
       if (res.ok) {
@@ -110,7 +133,7 @@ export default function AdminDashboard() {
   const handleBan = async (uid, currentStatus) => {
     const res = await fetch(`${API_BASE}/users/ban`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders,
       body: JSON.stringify({ user_id: uid, is_banned: !currentStatus })
     });
     if (res.ok) fetchUsers();
@@ -125,7 +148,7 @@ export default function AdminDashboard() {
     reader.onload = async (event) => {
       const res = await fetch(`${API_BASE}/sensitive-words/sync`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders,
         body: JSON.stringify({ file_content: event.target.result })
       });
       const data = await res.json();

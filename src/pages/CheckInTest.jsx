@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react';
 
+const games = [
+  { id: 'hextris', name: 'Hextris', desc: '六边形俄罗斯方块，旋转消除不停歇', icon: '🔷', color: '#3498db' },
+  { id: '2048', name: '2048', desc: '滑动合并数字，挑战极限高分', icon: '🧩', color: '#edc22e' },
+  { id: 'sandspiel', name: '沙粒模拟', desc: '自由创造粒子世界，释放想象力', icon: '🏝️', color: '#e6c873' },
+  { id: 'fluid', name: '流光流体', desc: '绚丽的流体光影互动体验', icon: '🌊', color: '#4a9eda' },
+];
+
 const CheckInTest = () => {
   const [tasks, setTasks] = useState([]);
   const [guideTasks, setGuideTasks] = useState([]);
@@ -7,6 +14,8 @@ const CheckInTest = () => {
 
   const [hasCheckedIn, setHasCheckedIn] = useState(false);
   const [selectedScore, setSelectedScore] = useState(null);
+
+  const [selectedGame, setSelectedGame] = useState(null);
 
   const storedUserId = localStorage.getItem('user_id');
   const userId = (storedUserId === "undefined" || storedUserId === "null") ? null : storedUserId;
@@ -263,7 +272,96 @@ const CheckInTest = () => {
 
         </div>
 
+        {/* ================= 模块 4：解压小游戏 ================= */}
+        <div data-aos="zoom-in-up" data-aos-easing="ease-out-back" data-aos-duration="700" data-aos-delay="200" className="quest-card" style={{ marginTop: '25px' }}>
+          <h3 className="quest-title" style={{ color: '#9b59b6', borderColor: '#9b59b6' }}>🎮 解压小游戏</h3>
+          <p style={{ color: '#666', fontSize: '14px', marginBottom: '20px' }}>
+            感到压力大？选一个喜欢的游戏，在 Emotia 中放松一下吧。
+          </p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
+            {games.map(game => (
+              <div
+                key={game.id}
+                onClick={() => setSelectedGame(game)}
+                style={{
+                  background: '#fff',
+                  borderRadius: '14px',
+                  padding: '20px 16px',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  border: '2px solid transparent',
+                  transition: 'all 0.25s ease',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.borderColor = game.color;
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = `0 8px 24px rgba(0,0,0,0.1)`;
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.borderColor = 'transparent';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.04)';
+                }}
+              >
+                <div style={{ fontSize: '42px', marginBottom: '10px' }}>{game.icon}</div>
+                <div style={{ fontWeight: 700, fontSize: '15px', color: '#333', marginBottom: '6px' }}>{game.name}</div>
+                <div style={{ fontSize: '12px', color: '#999', lineHeight: 1.4 }}>{game.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
       </div>
+
+      {/* ================= 游戏播放器弹窗 ================= */}
+      {selectedGame && (
+        <div
+          style={{
+            position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+            background: 'rgba(0,0,0,0.6)', zIndex: 9999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+          onClick={() => setSelectedGame(null)}
+        >
+          <div
+            style={{
+              background: '#fff', borderRadius: '16px', overflow: 'hidden',
+              width: '92vw', height: '90vh', maxWidth: '900px',
+              display: 'flex', flexDirection: 'column',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '12px 20px', background: '#faf8f5', borderBottom: '1px solid #eee',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '24px' }}>{selectedGame.icon}</span>
+                <span style={{ fontWeight: 700, fontSize: '16px', color: '#333' }}>{selectedGame.name}</span>
+              </div>
+              <button
+                onClick={() => setSelectedGame(null)}
+                style={{
+                  background: 'none', border: 'none', fontSize: '22px', cursor: 'pointer',
+                  color: '#999', padding: '4px 8px', borderRadius: '6px',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#f0f0f0'}
+                onMouseLeave={e => e.currentTarget.style.background = 'none'}
+              >
+                ✕
+              </button>
+            </div>
+            <iframe
+              src={`/games/${selectedGame.id}/index.html`}
+              style={{ flex: 1, border: 'none', width: '100%' }}
+              title={selectedGame.name}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

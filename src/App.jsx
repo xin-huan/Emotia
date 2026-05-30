@@ -32,8 +32,9 @@ function AppContent() {
   useEffect(() => {
     const savedUserId = localStorage.getItem('user_id');
     const savedEmail = localStorage.getItem('user_email');
+    const savedRole = localStorage.getItem('user_role');
     if (savedUserId) {
-      setUser({ user_id: savedUserId, email: savedEmail });
+      setUser({ user_id: savedUserId, email: savedEmail, role: savedRole || 'user' });
     }
   }, []);
 
@@ -59,6 +60,7 @@ function AppContent() {
   const handleLogout = () => {
     localStorage.removeItem('user_id');
     localStorage.removeItem('user_email');
+    localStorage.removeItem('user_role');
     setUser(null);
   };
 

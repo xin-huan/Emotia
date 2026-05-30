@@ -1,15 +1,26 @@
 # backend/app/main_admin.py
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Header, Depends
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import date
 import json
 
-# 🚀 引入你已经在 app.database 中定义好的 supabase 实例
-from app.database import supabase 
-# 定义路由器，所有的接口都会自动加上 /api/admin 前缀（稍后在 main 里配置）
-router = APIRouter()
+from app.database import supabase
+
+# ======= 管理员权限校验 =======
+def verify_admin(x_user_id: str = Header(None)):
+    if not x_user_id:
+        raise HTTPException(status_code=401, detail="未提供用户身份")
+    profile = supabase.table("profiles").select("role, is_banned").eq("id", x_user_id).single().execute()
+    if not profile.data or profile.data.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="无权访问：仅限管理员")
+    if profile.data.get("is_banned"):
+        raise HTTPException(status_code=403, detail="账号已被封禁")
+    return x_user_id
+
+# 所有管理接口统一校验管理员身份
+router = APIRouter(dependencies=[Depends(verify_admin)])
 
 # ======= 管理员系统数据模型 =======
 class BanUserRequest(BaseModel):
@@ -26,7 +37,7 @@ class ScaleStatusRequest(BaseModel):
 # 这里路径可以简化，因为前缀会在 main.py 里统一加
 
 @router.get("/dashboard/stats")
-def get_admin_stats():
+def get_admin_stats(user_id: str = Header(None, alias="x-user-id")):
     today = str(date.today())
     try:
         # 1. 平台热力图：今日心情均分
@@ -66,7 +77,7 @@ def get_admin_stats():
         return {"avg_mood": 0, "usage_ratio": {"agent":0,"test":0}, "conversion_rate": "0%", "risk_count": 0}
 
 @router.get("/users")
-def get_all_users_admin():
+def get_all_users_admin(user_id: str = Header(None, alias="x-user-id")):
     try:
         # 🚀 尝试查询
         res = supabase.table("profiles").select("*").order("created_at", desc=True).execute()
@@ -82,7 +93,7 @@ def get_all_users_admin():
             return []
 
 @router.get("/tests") # 🚀 确保这里的路径是 /tests
-def get_all_tests_admin():
+def get_all_tests_admin(user_id: str = Header(None, alias="x-user-id")):
     try:
         # 💡 管理员接口绝对不能加 .eq("is_active", True)
         # 如果加了，你一旦下架一个量表，它就从这个列表里永远消失了，没法再上架。
@@ -97,12 +108,12 @@ def get_all_tests_admin():
         return []
 
 @router.post("/users/ban")
-def toggle_user_ban(req: BanUserRequest):
+def toggle_user_ban(req: BanUserRequest, user_id: str = Header(None, alias="x-user-id")):
     supabase.table("profiles").update({"is_banned": req.is_banned}).eq("id", req.user_id).execute()
     return {"status": "success"}
 
 @router.post("/tests/toggle")
-def toggle_test_status(req: ScaleStatusRequest):
+def toggle_test_status(req: ScaleStatusRequest, user_id: str = Header(None, alias="x-user-id")):
     supabase.table("tests").update({"is_active": req.is_active}).eq("id", req.test_id).execute()
     return {"status": "success"}
 
@@ -110,7 +121,7 @@ class SyncWordsRequest(BaseModel):
     file_content: str
 
 @router.post("/sensitive-words/sync")
-async def sync_sensitive_words(req: SyncWordsRequest):
+async def sync_sensitive_words(req: SyncWordsRequest, user_id: str = Header(None, alias="x-user-id")):
     try:
         # 1. 获取原始行，过滤掉空格和空行
         raw_lines = req.file_content.split('\n')
@@ -148,14 +159,14 @@ async def sync_sensitive_words(req: SyncWordsRequest):
         raise HTTPException(status_code=500, detail=f"数据库同步异常: {str(e)}")
 
 @router.get("/sensitive-words")
-def get_sensitive_words(page: int = 1, size: int = 20):
+def get_sensitive_words(page: int = 1, size: int = 20, user_id: str = Header(None, alias="x-user-id")):
     start = (page - 1) * size
     res = supabase.table("sensitive_words").select("*").range(start, start + size).execute()
     return res.data
 
 # A. 获取待审核/被举报的帖子列表
 @router.get("/risk-items")
-def get_risk_items():
+def get_risk_items(user_id: str = Header(None, alias="x-user-id")):
     try:
         # 1. 抓取所有风险帖子 (status='flagged')
         posts_res = supabase.table("forum_posts") \
@@ -206,7 +217,7 @@ class ReviewRequest(BaseModel):
     target_type: str = "post"
 
 @router.post("/posts/review")
-def review_post(req: ReviewRequest):
+def review_post(req: ReviewRequest, user_id: str = Header(None, alias="x-user-id")):
     try:
         # 🚀 根据类型动态确定表名
         table_name = "forum_posts" if req.target_type == "post" else "forum_answers"

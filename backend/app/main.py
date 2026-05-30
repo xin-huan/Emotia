@@ -43,13 +43,13 @@ async def load_sensitive_words():
 
 
 from langchain_community.chat_models import ChatZhipuAI
+from dotenv import load_dotenv
+load_dotenv()
 
-# 2. 初始化 GLM 实例 (建议放在函数外面，这样不需要每次调用都初始化)
-# 将 '你的智谱APIKEY' 换成你真实申请到的 Key
 glm_llm = ChatZhipuAI(
-    model="glm-4-flash", # 这是免费版模型名称
-    api_key="aa576cdcbdf845538356e23b06beb2f7.tl0SZDpcXflIuBPa", 
-    temperature=0.3      # 测评分析不需要太高的随机性，0.3 比较稳重
+    model="glm-4-flash",
+    api_key=os.environ.get("ZHIPU_API_KEY"),
+    temperature=0.3
 )
 
 # ======= 数据模型定义 =======
@@ -252,12 +252,12 @@ def login(req: UserAuthRequest):
         user_id = response.user.id
 
         # 2. 🚀 [核心修复] 校验 profiles 表中的 is_banned 字段
-        profile_res = supabase.table("profiles").select("is_banned").eq("id", user_id).single().execute()
-        
+        profile_res = supabase.table("profiles").select("is_banned, role").eq("id", user_id).single().execute()
+
         if profile_res.data and profile_res.data.get("is_banned") == True:
             # 如果被封禁，手动抛出异常，不给前端返回 token
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, 
+                status_code=status.HTTP_403_FORBIDDEN,
                 detail="您的账号因违反社区规定已被封禁，无法登录。"
             )
         return {
@@ -266,6 +266,7 @@ def login(req: UserAuthRequest):
             "data": {
                 "user_id": response.user.id,
                 "email": response.user.email,
+                "role": profile_res.data.get("role", "user") if profile_res.data else "user",
                 "access_token": response.session.access_token
             }
         }
@@ -999,3 +1000,11 @@ def get_user_achievements(user_id: str):
             print(f"❌ 写入新成就异常: {e}")
 
     return {"status": "success", "data": achievements}
+
+
+@app.get("/api/user/role/{user_id}")
+def check_user_role(user_id: str):
+    """前端校验当前用户是否为管理员"""
+    profile = supabase.table("profiles").select("role").eq("id", user_id).single().execute()
+    role = profile.data.get("role", "user") if profile.data else "user"
+    return {"status": "success", "role": role}
