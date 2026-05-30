@@ -12,6 +12,7 @@ import Test from './pages/Test';
 import CheckInTest from './pages/CheckInTest';
 import ProfileDev from './pages/ProfileDev'
 import Intro from './pages/Intro'
+import AdminDashboard from './pages/AdminDashboard';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -83,6 +84,7 @@ function AppContent() {
         <Route path="/dev-me" element={<ProfileDev />} />
         <Route path="/ProfileDev" element={<ProfileDev />} />
         <Route path="/profile" element={<ProfileDev />} />
+        <Route path="/admin" element={<AdminDashboard />} />
       </Routes>
 
       {!isIntroPage && (

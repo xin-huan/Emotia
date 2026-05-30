@@ -231,6 +231,46 @@ const Interactive = () => {
 
   // 猜你想问
   const [openFaqId, setOpenFaqId] = useState(null);
+  const handleReport = async (targetId, targetType) => {
+  const userId = localStorage.getItem('user_id');
+  if (!userId) return alert("请先登录");
+
+  const reason = prompt("请输入举报理由（例如：恶意辱骂、广告等）：");
+  if (!reason || !reason.trim()) return;
+
+    // 🚀 调试打印：如果报 422，看这里打印出的对象，哪个字段是 undefined
+  console.log("准备发送举报包裹:", {
+    reporter_id: userId,
+    target_id: String(targetId), // 🚀 强转字符串，防止数字 ID 触发 422
+    target_type: targetType,
+    reason: reason
+  });
+  try {
+    const res = await fetch('http://localhost:8000/api/forum/report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        reporter_id: userId,
+        target_id: targetId,
+        target_type: targetType, // 'post' 或 'answer'
+        reason: reason
+      })
+    });
+
+    if (res.ok) {
+      alert("感谢您的反馈，已提交管理员审核");
+      // 成功后建议刷新列表，让被举报的帖子消失（因为后端会过滤 status='flagged'）
+      if (typeof fetchAllForumData === 'function') fetchAllForumData();
+    } else {
+      // 如果报 422，这里能看到后端具体的嫌弃原因
+      const errorData = await res.json();
+      console.error("举报失败详情:", errorData);
+    }
+
+  } catch (err) {
+    alert("举报失败，请检查网络");
+  }
+};
 
 
   // ==========================================
@@ -381,12 +421,24 @@ const formatData = (rawList, likedIds = []) => {
         content: text
       })
     });
-    if(res.ok) {
+    if (res.ok) {
+        const data = await res.json(); // 🚀 关键：先解析后端返回的数据
         setQuestionText('');
-        setPostSuccess('发布成功，已发布到社区');
+
+        // 🚀 逻辑判断：如果后端返回 status 是 pending，说明命中了违禁词
+        if (data.status === 'pending') {
+            setPostSuccess('⚠️ 内容包含敏感词，已提交人工审核');
+        } else {
+            setPostSuccess('发布成功，已发布到社区');
+        }
+
         setShowToast(true);
-        setTimeout(() => setShowToast(false), 2400);
-        fetchAllForumData(); // 发布后立即刷新全站数据
+        
+        // 如果是审核中，建议让 Toast 停留时间稍长一点（如 3 秒），让用户看清提示
+        const displayTime = data.status === 'pending' ? 3500 : 2400;
+        setTimeout(() => setShowToast(false), displayTime);
+
+        fetchAllForumData(); // 刷新数据（审核中的帖子此时在列表里会自动被后端过滤掉）
     }
   };
 
@@ -626,6 +678,17 @@ const formatData = (rawList, likedIds = []) => {
                           {q.isLiked ? '❤️' : '♡'} {q.likes || ''}
                         </button>
                         <span className="text-wysa-green/50">💬 {q.commentsCount}</span>
+                          {/* 🚀 新增举报按钮 */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation(); // 防止触发进入详情
+                            handleReport(q.id, 'post');
+                          }}
+                          className="text-gray-300 hover:text-red-400 transition-colors"
+                          title="举报此贴"
+                        >
+                          🚩 举报
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -790,7 +853,16 @@ const formatData = (rawList, likedIds = []) => {
                     </div>
                     <div className="flex-1">
                       <div className="flex justify-between items-center mb-1">
-                        <span className="text-sm font-bold text-gray-700">{comment.author}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-gray-700">{comment.author}</span>
+                          {/* 🚀 新增：评论举报按钮 */}
+                          <button 
+                            onClick={() => handleReport(comment.id, 'answer')}
+                            className="text-[10px] text-gray-300 hover:text-red-400 transition-colors"
+                          >
+                            举报
+                          </button>
+                        </div>
                         <span className="text-xs text-gray-400">{comment.time}</span>
                       </div>
                       <p className="text-sm text-gray-600 leading-relaxed">{comment.content}</p>
@@ -800,7 +872,6 @@ const formatData = (rawList, likedIds = []) => {
                   <div className="text-center text-gray-400 py-8 text-sm">还没有人回复，来做第一个温暖他的人吧</div>
                 )}
               </div>
-            </div>
 
             {/* 底部：发表评论 */}
             <div className="p-4 bg-white border-t border-black/5 flex gap-3 items-end">
@@ -820,7 +891,8 @@ const formatData = (rawList, likedIds = []) => {
             </div>
           </div>
         </div>
-      )}
+      </div>
+    )}
     </div>
 
       {/* ================= 弹窗：发布问题 ================= */}
