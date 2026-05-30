@@ -111,15 +111,41 @@ class SyncWordsRequest(BaseModel):
 
 @router.post("/sensitive-words/sync")
 async def sync_sensitive_words(req: SyncWordsRequest):
-    lines = req.file_content.split('\n')
-    words = [line.strip() for line in lines if line.strip()]
-    
-    batch_size = 500
-    for i in range(0, len(words), batch_size):
-        batch = [{"word": w} for w in words[i:i + batch_size]]
-        supabase.table("sensitive_words").upsert(batch,on_conflict="word").execute()
+    try:
+        # 1. 获取原始行，过滤掉空格和空行
+        raw_lines = req.file_content.split('\n')
         
-    return {"status": "success", "count": len(words)}
+        # 2. 🚀 【关键步骤】Python 集合去重
+        # 这一步解决了报错 21000 (同一批次内重复)
+        # 无论文件里有多少个重复的词，在这里都会变成唯一的一个
+        unique_words = {line.strip() for line in raw_lines if line.strip()}
+        
+        words_list = list(unique_words)
+        total_count = len(words_list)
+        
+        # 3. 分批次同步到数据库 (每批 500 条)
+        batch_size = 500
+        for i in range(0, total_count, batch_size):
+            current_batch = words_list[i : i + batch_size]
+            data_to_insert = [{"word": w} for w in current_batch]
+            
+            # 4. 🚀 【关键步骤】on_conflict="word"
+            # 这一步解决了报错 23505 (之前上传过的词再次上传)
+            # 它告诉数据库：如果这个词在表里已经有了，就地更新，不要报错
+            supabase.table("sensitive_words") \
+                .upsert(data_to_insert, on_conflict="word") \
+                .execute()
+                
+        return {
+            "status": "success", 
+            "message": f"成功同步 {total_count} 个唯一词汇（已自动忽略重复项）",
+            "count": total_count
+        }
+    
+    except Exception as e:
+        print(f"❌ 词库同步崩溃: {e}")
+        # 如果还是报错，打印出具体的错误细节给前端
+        raise HTTPException(status_code=500, detail=f"数据库同步异常: {str(e)}")
 
 @router.get("/sensitive-words")
 def get_sensitive_words(page: int = 1, size: int = 20):
