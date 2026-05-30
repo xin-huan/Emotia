@@ -28,7 +28,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+app.include_router(main_admin.router, prefix="/api/admin", tags=["管理员后台"])
 # 🚀 全局内存词库：为了快，我们不直接在 API 里查数据库
 SENSITIVE_SET = set()
 
@@ -40,6 +40,17 @@ async def load_sensitive_words():
     global SENSITIVE_SET
     SENSITIVE_SET = {row['word'] for row in res.data}
     print(f"✅ 词库加载完毕，共 {len(SENSITIVE_SET)} 个词")
+
+
+from langchain_community.chat_models import ChatZhipuAI
+
+# 2. 初始化 GLM 实例 (建议放在函数外面，这样不需要每次调用都初始化)
+# 将 '你的智谱APIKEY' 换成你真实申请到的 Key
+glm_llm = ChatZhipuAI(
+    model="glm-4-flash", # 这是免费版模型名称
+    api_key="aa576cdcbdf845538356e23b06beb2f7.tl0SZDpcXflIuBPa", 
+    temperature=0.3      # 测评分析不需要太高的随机性，0.3 比较稳重
+)
 
 # ======= 数据模型定义 =======
 
@@ -99,31 +110,49 @@ class TaskToggleRequest(BaseModel):
     is_completed: bool
 # ======= AI调用 =======
 async def generate_ai_report(title: str, score: int, radar_data: list, interpretation: str):
-    # 🚀 改进提示词：明确要求输出 结论 和 解析
-    prompt = f"""你是一位资深的心理咨询师。用户完成了《{title}》测评。
-    总分：{score}。维度分：{radar_data}。
-    标准：{interpretation}
+    prompt = f"""
+    你是一位专业的心理测评专家。用户刚刚完成了《{title}》量表。
     
-    请严格按照以下格式输出（不要有任何其他文字）：
-    结论：[此处只写4-10个字的心理类型结论]
-    解析：[此处写一段专业且温暖的详细分析，包含生活建议，250字左右]
+    【测评数据】
+    - 总分：{score}
+    - 维度得分：{radar_data}
+    - 计分常模与解释：{interpretation}
+    
+    【任务】
+    请结合数据写一份分析报告。
+    
+    【输出要求】
+    严格按以下格式输出，严禁任何前言：
+    结论：[5-10字]
+    解析：[200-300字，包含建议]
     """
+
     try:
-        from agent.agent import llm
-        response = await llm.ainvoke(prompt)
-        content = response.content
+        # 🚀 关键修改：这里不再从 agent 导入，而是直接用上面定义好的 glm_llm
+        # 注意：GLM-4 在 LangChain 中目前主要支持 invoke (同步)，
+        # 如果报错不支持 ainvoke，就用 .invoke()
+        response = glm_llm.invoke(prompt) 
+        content = response.content.strip()
         
-        # 简单解析：根据“解析：”这个词把文字切成两半
-        if "解析：" in content:
-            level_part = content.split("解析：")[0].replace("结论：", "").strip()
-            analysis_part = content.split("解析：")[1].strip()
+        print(f"🤖 GLM-4 原始回复：\n{content}")
+
+        # --- 解析逻辑保持不变 ---
+        import re
+        conclusion_match = re.search(r"结论[：:](.*?)(?=解析[：:]|$)", content, re.S)
+        analysis_match = re.search(r"解析[：:](.*)", content, re.S)
+
+        if conclusion_match and analysis_match:
+            level_part = conclusion_match.group(1).strip()
+            analysis_part = analysis_match.group(1).strip()
         else:
             level_part = "分析完成"
             analysis_part = content
-            
+
         return level_part, analysis_part
-    except:
-        return "分析完成", "测评已完成，建议结合右侧维度图进行自我观察。"
+
+    except Exception as e:
+        print(f"❌ GLM 调用失败: {e}")
+        return "测评完成", f"您的得分是 {score}。由于分析引擎繁忙，请参考量表提供的标准进行评估。"
 
 # ======= 核心业务接口 =======
 
@@ -138,6 +167,10 @@ async def chat_endpoint(req: ChatRequest):
     # 先在 cbt_sessions 表里占个位
     preview_text = (req.message[:15] + '...') if len(req.message) > 15 else req.message
     try:
+        # 🚀 [核心修复] 先看这人是不是被封了
+        user_status = supabase.table("profiles").select("is_banned").eq("id", post.user_id).single().execute()
+        if user_status.data and user_status.data.get("is_banned"):
+            raise HTTPException(status_code=403, detail="账号异常，操作被拒绝")
         supabase.table("cbt_sessions").upsert({
             "id": req.session_id,
             "user_id": req.user_id,
@@ -216,6 +249,17 @@ def login(req: UserAuthRequest):
             "email": req.email,
             "password": req.password,
         })
+        user_id = response.user.id
+
+        # 2. 🚀 [核心修复] 校验 profiles 表中的 is_banned 字段
+        profile_res = supabase.table("profiles").select("is_banned").eq("id", user_id).single().execute()
+        
+        if profile_res.data and profile_res.data.get("is_banned") == True:
+            # 如果被封禁，手动抛出异常，不给前端返回 token
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail="您的账号因违反社区规定已被封禁，无法登录。"
+            )
         return {
             "status": "success",
             "message": "登录成功！",
@@ -225,6 +269,8 @@ def login(req: UserAuthRequest):
                 "access_token": response.session.access_token
             }
         }
+    except HTTPException as he:
+        raise he
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="邮箱或密码错误，请检查后再试。")
 
@@ -275,15 +321,44 @@ def get_post_detail(post_id: str):
 @app.post("/api/forum/answers")
 def create_answer(ans: AnswerCreate):
     try:
+        # 🚀 [核心修复] 先看这人是不是被封了
+        user_status = supabase.table("profiles").select("is_banned").eq("id", post.user_id).single().execute()
+        if user_status.data and user_status.data.get("is_banned"):
+            raise HTTPException(status_code=403, detail="账号异常，操作被拒绝")
+        answer_status = "normal"
+        for word in SENSITIVE_SET:
+            if word in ans.content:
+                answer_status = "flagged"
+                break
         data = ans.dict()
+        data["status"] = answer_status
         res = supabase.table("forum_answers").insert(data).execute()
         return {"status": "success", "data": res.data}
+        # 🚀 2. 通知原帖作者 (如果审核通过)
+        if answer_status == "normal":
+            post = supabase.table("forum_posts").select("user_id").eq("id", ans.post_id).single().execute()
+            if post.data and post.data['user_id'] != ans.user_id:
+                supabase.table("notifications").insert({
+                    "receiver_id": post.data['user_id'],
+                    "actor_id": ans.user_id,
+                    "post_id": ans.post_id,
+                    "type": "comment"
+                }).execute()
+
+        return {
+            "status": "success" if answer_status == "normal" else "pending",
+            "message": "发布成功" if answer_status == "normal" else "评论包含敏感词，正等待审核"
+        }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/forum/posts")
 def create_post(post: PostCreate):
     try:
+        # 🚀 [核心修复] 先看这人是不是被封了
+        user_status = supabase.table("profiles").select("is_banned").eq("id", post.user_id).single().execute()
+        if user_status.data and user_status.data.get("is_banned"):
+            raise HTTPException(status_code=403, detail="账号异常，操作被拒绝")
         # 防御 undefined 字符串
         if post.user_id == "undefined" or not post.user_id:
             raise HTTPException(status_code=401, detail="未登录或用户身份无效")
@@ -300,10 +375,53 @@ def create_post(post: PostCreate):
         # [新增] 将扫描结果注入字典，存入数据库的 status 列
         data["status"] = post_status 
         res = supabase.table("forum_posts").insert(data).execute()
+        # 🚀 重点：如果是敏感词，给前端返回特定状态
+        if post_status == "flagged":
+            return {
+                "status": "pending", 
+                "message": "⚠️ 提示：内容包含敏感词，已提交人工审核，审核通过前仅自己可见。"
+            }
         return {"status": "success", "data": res.data}
     except Exception as e:
         print(f"❌ 发布失败详情: {e}")
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# 🚀 新增：举报接口
+# 修改后的举报接口 (统一处理帖子和评论举报)
+class UnifiedReportRequest(BaseModel):
+    reporter_id: str
+    target_id: str # 帖子ID或评论ID
+    target_type: str # 'post' 或 'answer'
+    reason: str
+
+@app.post("/api/forum/report")
+def report_content(req: UnifiedReportRequest):
+    try:
+        # 1. 构造存入举报表的数据
+        report_data = {
+            "reporter_id": req.reporter_id,
+            "reason": req.reason
+        }
+        
+        # 2. 根据类型，把 ID 填进对应的坑里，并修改目标状态
+        if req.target_type == 'post':
+            report_data["post_id"] = req.target_id
+            # 将帖子设为待审核
+            supabase.table("forum_posts").update({"status": "flagged"}).eq("id", req.target_id).execute()
+        else:
+            report_data["answer_id"] = req.target_id
+            # 将评论设为待审核
+            supabase.table("forum_answers").update({"status": "flagged"}).eq("id", req.target_id).execute()
+        
+        # 3. 写入举报记录表
+        supabase.table("forum_reports").insert(report_data).execute()
+        
+        return {"status": "success", "message": "举报已受理"}
+    except Exception as e:
+        print(f"❌ 举报失败: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
 
 @app.get("/api/user/my-posts/{user_id}")
 def get_my_posts(user_id: str):
@@ -315,36 +433,45 @@ def get_my_posts(user_id: str):
 def get_posts(sort: str = "latest", category_id: int = None, viewer_id: str = None, limit: int = 6):
     query = supabase.table("forum_posts").select(
         "*, profiles!user_id(username, avatar_url), forum_likes(count), forum_answers(count)"
-    )
-    if category_id:
-        query = query.eq("category_id", category_id)
+    ).eq("status", "normal")# 👈 关键点：普通用户不看 flagged 贴
+    try:
+    # 增加 .eq("status", "normal") 过滤掉待审核的帖子
+        query = supabase.table("forum_posts").select(
+        "*, profiles!user_id(username, avatar_url), forum_likes(count), forum_answers(count)"
+        ).eq("status", "normal")
+        if category_id:
+            query = query.eq("category_id", category_id)
 
-    res = query.execute()
-    all_data = res.data
+        res = query.execute()
+        all_data = res.data
 
-    liked_post_ids = []
-    if viewer_id and viewer_id not in ["undefined", "null", ""]:
-        likes_res = supabase.table("forum_likes").select("post_id").eq("user_id", viewer_id).execute()
-        liked_post_ids = [item['post_id'] for item in likes_res.data]
+        liked_post_ids = []
+        if viewer_id and viewer_id not in ["undefined", "null", ""]:
+            likes_res = supabase.table("forum_likes").select("post_id").eq("user_id", viewer_id).execute()
+            liked_post_ids = [item['post_id'] for item in likes_res.data]
 
-    if sort == "hot":
-        for post in all_data:
-            likes = post['forum_likes'][0]['count'] if post['forum_likes'] else 0
-            answers = post['forum_answers'][0]['count'] if post['forum_answers'] else 0
-            post['hot_score'] = likes + answers
-        processed_posts = sorted(all_data, key=lambda x: x.get('hot_score', 0), reverse=True)
-        processed_posts = processed_posts[:10]
-    elif sort == "random":
-        random.shuffle(all_data)
-        processed_posts = all_data[:limit]
-    else:
-        processed_posts = sorted(all_data, key=lambda x: x['created_at'], reverse=True)
-        processed_posts = processed_posts[:limit]
+        if sort == "hot":
+            for post in all_data:
+                likes = post['forum_likes'][0]['count'] if post['forum_likes'] else 0
+                answers = post['forum_answers'][0]['count'] if post['forum_answers'] else 0
+                post['hot_score'] = likes + answers
+            processed_posts = sorted(all_data, key=lambda x: x.get('hot_score', 0), reverse=True)
+            processed_posts = processed_posts[:10]
+        elif sort == "random":
+            random.shuffle(all_data)
+            processed_posts = all_data[:limit]
+        else:
+            processed_posts = sorted(all_data, key=lambda x: x['created_at'], reverse=True)
+            processed_posts = processed_posts[:limit]
 
-    return {
-        "posts": processed_posts,
-        "liked_post_ids": liked_post_ids
-    }
+        return {
+            "posts": processed_posts,
+            "liked_post_ids": liked_post_ids
+        }
+    except Exception as e:
+        print(f"❌ 论坛列表接口崩溃详情: {e}")
+        # 即使逻辑错，也要返回符合结构的空数据，防止前端白屏
+        return {"posts": [], "liked_post_ids": []}
 
 
 @app.post("/api/forum/like/toggle")
@@ -395,7 +522,11 @@ class TestSubmitRequest(BaseModel):
 @app.get("/api/tests")
 def get_all_tests():
     # 增加 select 字段，确保前端能拿到缩写和分类
-    res = supabase.table("tests").select("id, title, abbreviation, description, icon, tags").order("id").execute()
+    res = supabase.table("tests")\
+    .select("id, title, abbreviation, description, icon, tags")\
+    .eq("is_active", True) \
+    .order("id")\
+    .execute()
     return res.data
 
 # B. 获取对应测试的题目和选项 (答题页用)

@@ -397,31 +397,70 @@ export default function ProfileFullDemo() {
 
           {/* TAB 3: 互动消息 */}
           {activeTab === 'social' && (
-            <div className="bg-white rounded-[3rem] p-10 shadow-sm border border-pink-100 animate-in fade-in duration-500">
-              <h3 className="text-2xl font-black text-gray-800 mb-6">社交动态</h3>
-              {data.notifs.map(n => (
-                <div key={n.id} className="flex gap-6 p-6 bg-white border-2 border-gray-50 rounded-[2rem] items-center hover:border-blue-100 hover:shadow-lg transition-all group">
-                  <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-                    {n.type === 'like' ? '❤️' : '💬'}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-600">
-                      <span className="font-black text-gray-900">{n.actor?.username || "神秘访客"}</span>
-                      {n.type === 'like' ? ' 给你的倾诉点了一个共鸣' : ' 回复了你的提问'}
-                    </p>
-                    <div className="mt-2 text-xs text-gray-400 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                        帖子内容："{n.post?.content || "内容已被删除"}"
+            <div className="bg-white rounded-[3rem] p-10 shadow-sm border border-pink-100 animate-in fade-in duration-500 min-h-[600px]">
+              <h3 className="text-2xl font-black text-gray-800 mb-8 flex items-center gap-3">
+                通知中心
+                <span className="text-xs font-normal text-gray-400 bg-gray-100 px-3 py-1 rounded-full">最新动态</span>
+              </h3>
+              
+              <div className="space-y-4">
+                {data.notifs.map(n => {
+                  // 🚀 核心显示逻辑分支
+                  const isSystem = n.type.startsWith('system_');
+                  let config = {
+                    title: "",
+                    icon: "💬",
+                    color: "blue",
+                    desc: `内容："${n.post?.content || '内容已被处理'}"`
+                  };
+
+                  if (n.type === 'like') {
+                    config = { ...config, title: `${n.actor?.username || '神秘人'} 共鸣了你的倾诉`, icon: "❤️", color: "pink" };
+                  } else if (n.type === 'comment') {
+                    config = { ...config, title: `${n.actor?.username || '神秘人'} 回复了你的提问`, icon: "💬", color: "blue" };
+                  } else if (n.type === 'system_approve') {
+                    config = { 
+                      title: "✨ 审核通过通知", icon: "✅", color: "green", 
+                      desc: "你的内容已通过人工审核，现在全社区可见。" 
+                    };
+                  } else if (n.type === 'system_reject') {
+                    config = { 
+                      title: "⚠️ 违规处理提醒", icon: "🚫", color: "red", 
+                      desc: "很抱歉，你的内容因包含敏感信息已被系统移除。请共同维护温暖的社区环境。" 
+                    };
+                  }
+
+                  // 根据颜色生成对应的 Tailwind 类名
+                  const colorClasses = {
+                    pink: "bg-pink-50 text-pink-500 border-pink-100",
+                    blue: "bg-blue-50 text-blue-500 border-blue-100",
+                    green: "bg-green-50 text-green-600 border-green-100",
+                    red: "bg-red-50 text-red-600 border-red-100"
+                  }[config.color];
+
+                  return (
+                    <div key={n.id} className={`flex gap-6 p-6 ${isSystem ? colorClasses : 'bg-white'} border-2 rounded-[2rem] items-center hover:shadow-md transition-all group`}>
+                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-sm ${colorClasses.split(' ')[0]} ${colorClasses.split(' ')[1]}`}>
+                        {config.icon}
+                      </div>
+                      <div className="flex-1">
+                        <p className={`text-sm font-black ${isSystem ? '' : 'text-gray-900'}`}>{config.title}</p>
+                        <div className="mt-2 text-xs opacity-70 leading-relaxed italic">
+                          {config.desc}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-gray-300 font-bold">{new Date(n.created_at).toLocaleDateString()}</span>
                     </div>
+                  );
+                })}
+
+                {data.notifs.length === 0 && (
+                  <div className="text-center py-40">
+                    <div className="text-4xl mb-4 grayscale opacity-20">📪</div>
+                    <p className="text-gray-300 font-bold">暂时还没有任何消息</p>
                   </div>
-                  <span className="text-[10px] text-gray-300 font-bold">{new Date(n.created_at).toLocaleDateString()}</span>
-                </div>
-              ))}
-              {data.notifs.length === 0 && (
-                <div className="text-center py-40">
-                  <div className="text-4xl mb-4 grayscale opacity-30">📪</div>
-                  <p className="text-gray-300 font-bold">暂时还没有新的互动消息</p>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
 
