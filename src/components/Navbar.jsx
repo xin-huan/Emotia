@@ -47,6 +47,15 @@ const Navbar = ({ onLoginClick, user, onLogout }) => {
           // ✅ 登录后的状态：外层增加 group 类名用于触发悬停
           <div className="relative group flex items-center gap-3 cursor-pointer py-2">
 
+            {user.role === 'admin' && (
+              <button
+                onClick={(e) => { e.stopPropagation(); navigate('/admin'); }}
+                className="bg-amber-400/90 hover:bg-amber-400 text-slate-900 text-xs font-bold px-3 py-1.5 rounded-full transition-all shadow-sm hover:shadow-md"
+              >
+                🛡️ 管理
+              </button>
+            )}
+
             <div className="text-right hidden sm:block">
               <p className="text-white text-[10px] opacity-60 font-bold uppercase tracking-widest">Member</p>
               <p className="text-white text-sm font-bold truncate max-w-[100px]">

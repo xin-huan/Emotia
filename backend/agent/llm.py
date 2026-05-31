@@ -1,7 +1,11 @@
 import json
+import os
 from typing import Annotated, List, Dict, Any
 from typing_extensions import TypedDict
 from pydantic import BaseModel, Field
+
+from dotenv import load_dotenv
+load_dotenv()
 
 from langgraph.graph import StateGraph, END, START
 from langgraph.graph.message import add_messages
@@ -66,7 +70,7 @@ def evaluate_reframing(evidence: str, current_tag: str, is_broken: bool):
 # 3. 初始化 LLM
 # ==========================================
 llm = ChatOpenAI(
-    api_key="sk-017e613bf5754e37ac2140e058885b81",  # 替换为你的真实 Key
+    api_key=os.environ.get("DEEPSEEK_API_KEY")
     base_url="https://api.deepseek.com",
     model="deepseek-chat",
     temperature=0.2  # 降低温度，保证抽取稳定性

@@ -1,0 +1,262 @@
+# backend/app/main_admin.py
+
+from fastapi import APIRouter, HTTPException, status, Header, Depends
+from pydantic import BaseModel
+from typing import List, Optional
+from datetime import date
+import json
+
+from app.database import supabase
+
+# ======= 管理员权限校验 =======
+def verify_admin(x_user_id: str = Header(None)):
+    if not x_user_id:
+        raise HTTPException(status_code=401, detail="未提供用户身份")
+    profile = supabase.table("profiles").select("role, is_banned").eq("id", x_user_id).single().execute()
+    if not profile.data or profile.data.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="无权访问：仅限管理员")
+    if profile.data.get("is_banned"):
+        raise HTTPException(status_code=403, detail="账号已被封禁")
+    return x_user_id
+
+# 所有管理接口统一校验管理员身份
+router = APIRouter(dependencies=[Depends(verify_admin)])
+
+# ======= 管理员系统数据模型 =======
+class BanUserRequest(BaseModel):
+    user_id: str
+    is_banned: bool
+
+class ScaleStatusRequest(BaseModel):
+    test_id: int
+    is_active: bool
+
+# ======= 管理员系统接口 =======
+
+# 注意：所有的 @app 改为 @router
+# 这里路径可以简化，因为前缀会在 main.py 里统一加
+
+@router.get("/dashboard/stats")
+def get_admin_stats(user_id: str = Header(None, alias="x-user-id")):
+    today = str(date.today())
+    try:
+        # 1. 平台热力图：今日心情均分
+        mood_res = supabase.table("daily_checkins").select("emotion_score").eq("checkin_date", today).execute()
+        avg_mood = sum([r['emotion_score'] for r in mood_res.data]) / len(mood_res.data) if mood_res.data else 0
+        
+        # 2. 功能热度：Agent vs 测试
+        agent_count = supabase.table("cbt_sessions").select("id", count="exact").execute().count or 0
+        test_count = supabase.table("user_test_results").select("id", count="exact").execute().count or 0
+        
+        # 3. 互动转化率
+        conversion = round((agent_count / test_count * 100), 1) if test_count > 0 else 0
+        
+        # 4. 内容风险：待审核帖子
+        # 🚀 3. 核心修复：综合统计风险内容 (帖子 + 评论)
+        risk_posts_count = supabase.table("forum_posts") \
+            .select("id", count="exact") \
+            .eq("status", "flagged") \
+            .execute().count or 0
+            
+        risk_answers_count = supabase.table("forum_answers") \
+            .select("id", count="exact") \
+            .eq("status", "flagged") \
+            .execute().count or 0
+        
+        # 总风险数 = 风险帖子 + 风险评论
+        total_risk_count = risk_posts_count + risk_answers_count
+
+        return {
+            "avg_mood": round(avg_mood, 1),
+            "usage_ratio": {"agent": agent_count, "test": test_count},
+            "conversion_rate": f"{conversion}%",
+            "risk_count": total_risk_count # 🚀 返回相加后的结果
+        }
+    except Exception as e:
+        print(f"❌ 看板统计失败: {e}")
+        return {"avg_mood": 0, "usage_ratio": {"agent":0,"test":0}, "conversion_rate": "0%", "risk_count": 0}
+
+@router.get("/users")
+def get_all_users_admin(user_id: str = Header(None, alias="x-user-id")):
+    try:
+        # 🚀 尝试查询
+        res = supabase.table("profiles").select("*").order("created_at", desc=True).execute()
+        return res.data if res.data else []
+    except Exception as e:
+        # 🚀 如果报错，在终端打印出来，但给前端返回空列表，防止 500 导致 CORS 报错
+        print(f"❌ 获取用户列表失败: {e}")
+        # 如果是因为没有 created_at 报错，我们就尝试不带排序的查询作为兜底
+        try:
+            res_backup = supabase.table("profiles").select("*").execute()
+            return res_backup.data
+        except:
+            return []
+
+@router.get("/tests") # 🚀 确保这里的路径是 /tests
+def get_all_tests_admin(user_id: str = Header(None, alias="x-user-id")):
+    try:
+        # 💡 管理员接口绝对不能加 .eq("is_active", True)
+        # 如果加了，你一旦下架一个量表，它就从这个列表里永远消失了，没法再上架。
+        res = supabase.table("tests").select("*").order("id").execute()
+        
+        # 调试打印：看后端到底从数据库拿到了几条
+        print(f"📊 后端管理员接口查询到 {len(res.data) if res.data else 0} 条量表")
+        
+        return res.data if res.data else []
+    except Exception as e:
+        print(f"❌ 获取量表失败: {e}")
+        return []
+
+@router.post("/users/ban")
+def toggle_user_ban(req: BanUserRequest, user_id: str = Header(None, alias="x-user-id")):
+    supabase.table("profiles").update({"is_banned": req.is_banned}).eq("id", req.user_id).execute()
+    return {"status": "success"}
+
+@router.post("/tests/toggle")
+def toggle_test_status(req: ScaleStatusRequest, user_id: str = Header(None, alias="x-user-id")):
+    supabase.table("tests").update({"is_active": req.is_active}).eq("id", req.test_id).execute()
+    return {"status": "success"}
+
+class SyncWordsRequest(BaseModel):
+    file_content: str
+
+@router.post("/sensitive-words/sync")
+async def sync_sensitive_words(req: SyncWordsRequest, user_id: str = Header(None, alias="x-user-id")):
+    try:
+        # 1. 获取原始行，过滤掉空格和空行
+        raw_lines = req.file_content.split('\n')
+        
+        # 2. 🚀 【关键步骤】Python 集合去重
+        # 这一步解决了报错 21000 (同一批次内重复)
+        # 无论文件里有多少个重复的词，在这里都会变成唯一的一个
+        unique_words = {line.strip() for line in raw_lines if line.strip()}
+        
+        words_list = list(unique_words)
+        total_count = len(words_list)
+        
+        # 3. 分批次同步到数据库 (每批 500 条)
+        batch_size = 500
+        for i in range(0, total_count, batch_size):
+            current_batch = words_list[i : i + batch_size]
+            data_to_insert = [{"word": w} for w in current_batch]
+            
+            # 4. 🚀 【关键步骤】on_conflict="word"
+            # 这一步解决了报错 23505 (之前上传过的词再次上传)
+            # 它告诉数据库：如果这个词在表里已经有了，就地更新，不要报错
+            supabase.table("sensitive_words") \
+                .upsert(data_to_insert, on_conflict="word") \
+                .execute()
+                
+        return {
+            "status": "success", 
+            "message": f"成功同步 {total_count} 个唯一词汇（已自动忽略重复项）",
+            "count": total_count
+        }
+    
+    except Exception as e:
+        print(f"❌ 词库同步崩溃: {e}")
+        # 如果还是报错，打印出具体的错误细节给前端
+        raise HTTPException(status_code=500, detail=f"数据库同步异常: {str(e)}")
+
+@router.get("/sensitive-words")
+def get_sensitive_words(page: int = 1, size: int = 20, user_id: str = Header(None, alias="x-user-id")):
+    start = (page - 1) * size
+    res = supabase.table("sensitive_words").select("*").range(start, start + size).execute()
+    return res.data
+
+# A. 获取待审核/被举报的帖子列表
+@router.get("/risk-items")
+def get_risk_items(user_id: str = Header(None, alias="x-user-id")):
+    try:
+        # 1. 抓取所有风险帖子 (status='flagged')
+        posts_res = supabase.table("forum_posts") \
+            .select("*, profiles!user_id(username)") \
+            .eq("status", "flagged") \
+            .order("created_at", desc=True) \
+            .execute()
+        
+        posts = posts_res.data or []
+        # 为每个帖子手动挂载具体的举报信息
+        for post in posts:
+            report_info = supabase.table("forum_reports") \
+                .select("reason, profiles!reporter_id(username)") \
+                .eq("post_id", post["id"]) \
+                .execute()
+            post["forum_reports"] = report_info.data or []
+
+        # 2. 抓取所有风险评论 (status='flagged')
+        answers_res = supabase.table("forum_answers") \
+            .select("*, profiles!user_id(username)") \
+            .eq("status", "flagged") \
+            .order("created_at", desc=True) \
+            .execute()
+        
+        answers = answers_res.data or []
+        # 为每个评论手动挂载具体的举报信息
+        for ans in answers:
+            report_info = supabase.table("forum_reports") \
+                .select("reason, profiles!reporter_id(username)") \
+                .eq("answer_id", ans["id"]) \
+                .execute()
+            ans["forum_reports"] = report_info.data or []
+
+        # 3. 🚀 返回统一的大包裹
+        return {
+            "posts": posts,
+            "answers": answers
+        }
+
+    except Exception as e:
+        print(f"❌ 获取全站风险项失败: {e}")
+        return {"posts": [], "answers": []}
+
+# B. 审核操作接口
+class ReviewRequest(BaseModel):
+    post_id: str
+    action: str # 'approve' (通过) 或 'delete' (删除)
+    target_type: str = "post"
+
+@router.post("/posts/review")
+def review_post(req: ReviewRequest, user_id: str = Header(None, alias="x-user-id")):
+    try:
+        # 🚀 根据类型动态确定表名
+        table_name = "forum_posts" if req.target_type == "post" else "forum_answers"
+        
+        # 1. 查找作者信息用于发通知 (增加安全判断)
+        target_res = supabase.table(table_name).select("user_id, content").eq("id", req.post_id).execute()
+        
+        if not target_res.data:
+            raise HTTPException(status_code=404, detail="未找到目标内容")
+            
+        author_id = target_res.data[0]['user_id']
+        content_preview = target_res.data[0]['content'][:15] + "..."
+
+        if req.action == "approve":
+            # 审核通过：变回 normal
+            supabase.table(table_name).update({"status": "normal"}).eq("id", req.post_id).execute()
+            
+            # 发送系统通知
+            supabase.table("notifications").insert({
+                "receiver_id": author_id,
+                "actor_id": author_id,
+                "type": "system_approve",
+                "post_id": req.post_id if req.target_type == "post" else None,
+                "is_read": False
+            }).execute()
+            return {"message": "审核已通过"}
+            
+        else:
+            # 违规删除：先发通知再删
+            supabase.table("notifications").insert({
+                "receiver_id": author_id,
+                "actor_id": author_id,
+                "type": "system_reject",
+                "is_read": False
+            }).execute()
+            
+            supabase.table(table_name).delete().eq("id", req.post_id).execute()
+            return {"message": "已违规删除"}
+
+    except Exception as e:
+        print(f"❌ 审核操作崩溃: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

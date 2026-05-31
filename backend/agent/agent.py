@@ -19,10 +19,11 @@ from langchain_openai import OpenAIEmbeddings
 # ==========================================
 # 0. 全局加载 ML 模型与 Supabase 数据库
 # ==========================================
-# --- 填入你刚才保存的 URL 和 KEY ---
-SUPABASE_URL = ""
-SUPABASE_KEY = ""
-SILICONFLOW_API_KEY = ""
+from dotenv import load_dotenv
+load_dotenv()
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+SILICONFLOW_API_KEY = os.environ.get("SILICONFLOW_API_KEY")
 
 print("⏳ 正在连接 Supabase 数据库...")
 try:
@@ -188,7 +189,7 @@ def evaluate_reframing(evidence: str, current_tag: str, is_broken: bool):
 # 3. 初始化 LLM
 # ==========================================
 llm = ChatOpenAI(
-    api_key="sk-017e613bf5754e37ac2140e058885b81",
+    api_key=os.environ.get("DEEPSEEK_API_KEY"),
     base_url="https://api.deepseek.com",
     model="deepseek-chat",
     temperature=0.2
