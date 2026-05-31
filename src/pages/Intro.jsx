@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motion';
-import Silk from '../components/Silk';
-import InfiniteMenu from '../components/InfiniteMenu';
+import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
+import UnicornScene from 'unicornstudio-react';
 // ==========================================
 // 稳定随机数
 // ==========================================
@@ -79,25 +78,123 @@ const RippleText = React.memo(function RippleText({ text }) {
 });
 
 // ==========================================
+// 丝滑滚动容器（弹簧物理）
+// ==========================================
+function SmoothScrollContainer({ children }) {
+  const containerRef = useRef(null);
+  const contentRef = useRef(null);
+  const scrollY = useMotionValue(0);
+  const smoothY = useSpring(scrollY, { stiffness: 100, damping: 24, mass: 0.7 });
+  const translateY = useTransform(smoothY, v => -v);
+  const maxScrollRef = useRef(0);
+  const touchStartRef = useRef(0);
+  const touchScrollRef = useRef(0);
+
+  const measure = useCallback(() => {
+    const c = containerRef.current;
+    const content = contentRef.current;
+    if (c && content) {
+      maxScrollRef.current = Math.max(0, content.scrollHeight - c.clientHeight);
+      const current = scrollY.get();
+      if (current > maxScrollRef.current) scrollY.set(maxScrollRef.current);
+    }
+  }, []);
+
+  useEffect(() => {
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (containerRef.current) ro.observe(containerRef.current);
+    if (contentRef.current) ro.observe(contentRef.current);
+    return () => ro.disconnect();
+  }, [measure]);
+
+  const handleWheel = useCallback((e) => {
+    const current = scrollY.get();
+    const next = current + e.deltaY;
+    scrollY.set(Math.max(0, Math.min(maxScrollRef.current, next)));
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      className="flex-1 overflow-hidden"
+      onWheel={handleWheel}
+      onTouchStart={(e) => {
+        touchStartRef.current = e.touches[0].clientY;
+        touchScrollRef.current = scrollY.get();
+      }}
+      onTouchMove={(e) => {
+        const dy = touchStartRef.current - e.touches[0].clientY;
+        const next = touchScrollRef.current + dy;
+        scrollY.set(Math.max(0, Math.min(maxScrollRef.current, next)));
+      }}
+    >
+      <motion.div ref={contentRef} style={{ y: translateY }}>
+        {children}
+      </motion.div>
+    </div>
+  );
+}
+
+// ==========================================
+// 3D 折叠漂浮卡片
+// ==========================================
+function WorkCard({ item, image, index }) {
+  const mouseX = useMotionValue(0.5);
+  const mouseY = useMotionValue(0.5);
+  const springRotateX = useSpring(useTransform(mouseY, [0, 1], [12, -12]), { stiffness: 260, damping: 28 });
+  const springRotateY = useSpring(useTransform(mouseX, [0, 1], [-12, 12]), { stiffness: 260, damping: 28 });
+  const springZ = useSpring(useTransform(mouseY, [0, 0.5, 1], [0, 25, 0]), { stiffness: 260, damping: 28 });
+  const springScale = useSpring(useTransform(mouseY, [0, 1], [1, 1.04]), { stiffness: 260, damping: 28 });
+
+  return (
+    <motion.div
+      className="cursor-pointer rounded-xl overflow-hidden bg-white/5"
+      style={{
+        rotateX: springRotateX,
+        rotateY: springRotateY,
+        z: springZ,
+        scale: springScale,
+        transformStyle: 'preserve-3d',
+      }}
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.6 + index * 0.08, duration: 0.5, ease: 'easeOut' }}
+      onMouseMove={(e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        mouseX.set((e.clientX - r.left) / r.width);
+        mouseY.set((e.clientY - r.top) / r.height);
+      }}
+      onMouseLeave={() => { mouseX.set(0.5); mouseY.set(0.5); }}
+      onClick={() => { window.location.href = item.path; }}
+    >
+      <div className="aspect-[4/3] overflow-hidden">
+        <img src={image} alt={item.title} className="w-full h-full object-cover" />
+      </div>
+      <div className="p-3" style={{ transform: 'translateZ(10px)' }}>
+        <h3 className="text-white font-semibold text-sm md:text-base">{item.title}</h3>
+        <p className="text-white/50 text-xs mt-1">{item.zh}</p>
+      </div>
+    </motion.div>
+  );
+}
+
+// ==========================================
 // 主组件
 // ==========================================
 export default function Intro() {
   const [stage, setStage] = useState('eye');
-  const [activeWorkIndex, setActiveWorkIndex] = useState(0);
-
-  const menuItems = useMemo(() => WORK_ITEMS.map(item => ({
-    image: `/${item.id === 1 ? 'about3.png' : item.id === 2 ? 'about1.jpg' : item.id === 3 ? 'agent1.png' : item.id === 4 ? 'test.png' : item.id === 5 ? '1.jpg' : item.id === 6 ? 'A.png' : 'profile.png'}`,
-    title: item.title,
-    description: item.zh,
-    link: item.path,
-  })), []);
-
   const containerRef = useRef(null);
   const audioRef = useRef(null);
+  const [showUnmutePrompt, setShowUnmutePrompt] = useState(false);
+
+  const getImage = (id) => {
+    const map = { 1: '/about3.png', 2: '/about1.jpg', 3: '/agent1.png', 4: '/test.png', 5: '/1.jpg', 6: '/A.png', 7: '/profile.png' };
+    return map[id] || '/about1.jpg';
+  };
 
   // 加载 Unicorn SDK
   useEffect(() => {
-    if (stage !== 'eye') return;
     const SDK = 'https://cdn.jsdelivr.net/gh/hiunicornstudio/unicornstudio.js@v2.1.12/dist/unicornStudio.umd.js';
     const init = () => { if (window.UnicornStudio?.init) window.UnicornStudio.init(); };
 
@@ -132,12 +229,55 @@ export default function Intro() {
     const audio = new Audio('/M500003lTIFm4NKdSk.mp3');
     audio.loop = true;
     audio.volume = 0.25;
-    audio.play().catch(() => {});
+
+    const tryUnmute = () => {
+      if (!audio) return;
+      audio.muted = false;
+      audio.play().catch(() => {});
+      setShowUnmutePrompt(false);
+      window.removeEventListener('pointerdown', tryUnmute);
+      window.removeEventListener('keydown', tryUnmute);
+    };
+
+    // 尝试直接播放；若被浏览器阻止，则静音播放并在首次交互时解除静音
+    audio.play().catch(() => {
+      audio.muted = true;
+      audio.play().catch(() => {});
+      setShowUnmutePrompt(true);
+      window.addEventListener('pointerdown', tryUnmute, { once: true });
+      window.addEventListener('keydown', tryUnmute, { once: true });
+    });
+
     audioRef.current = audio;
-    return () => { audio.pause(); audioRef.current = null; };
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      window.removeEventListener('pointerdown', tryUnmute);
+      window.removeEventListener('keydown', tryUnmute);
+    };
   }, []);
 
+  const handleUnmuteClick = () => {
+    if (audioRef.current) {
+      audioRef.current.muted = false;
+      audioRef.current.play().catch(() => {});
+    }
+    setShowUnmutePrompt(false);
+  };
+
   const handleEnter = () => {
+    if (!audioRef.current) {
+      const audio = new Audio('/M500003lTIFm4NKdSk.mp3');
+      audio.loop = true;
+      audio.volume = 0.25;
+      audio.play().catch(() => {});
+      audioRef.current = audio;
+    } else {
+      audioRef.current.play().catch(() => {});
+    }
     setStage('ripple');
   };
 
@@ -148,6 +288,14 @@ export default function Intro() {
       style={{ fontFamily: "'Neue Haas Grotesk', 'Helvetica Neue', sans-serif" }}
       onMouseMove={handleMouseMove}
     >
+        {showUnmutePrompt && (
+          <div className="absolute inset-0 z-40 flex items-center justify-center pointer-events-auto">
+            <button
+              onClick={handleUnmuteClick}
+              className="bg-black/70 text-white px-6 py-3 rounded-full backdrop-blur-sm"
+            >进入Emotia</button>
+          </div>
+        )}
       {/* ==================== 阶段 1：Unicorn 入口 ==================== */}
       <AnimatePresence>
         {stage === 'eye' && (
@@ -226,63 +374,46 @@ export default function Intro() {
         {stage === 'work' && (
           <motion.div
             key="work"
-            className="absolute inset-0 bg-[#1a2a1a] z-10 overflow-hidden flex flex-col"
-            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+            className="absolute inset-0 z-10 flex flex-col"
+            style={{ perspective: 1000 }}
+            initial={{ y: '100%' }} animate={{ y: 0 }}
+            exit={{ y: '100%', transition: { duration: 0.6, ease: 'easeInOut' } }}
             transition={{ type: 'spring', stiffness: 60, damping: 20 }}
-            style={{ rotateX: smoothTiltX, rotateY: smoothTiltY, perspective: 1000 }}
           >
-            {/* Silk 动态丝缎背景 */}
-            <div className="absolute inset-0 z-0">
-              <Silk
-                speed={3}
-                scale={1.2}
-                color="#567357"
-                noiseIntensity={1.2}
-                rotation={0.3}
-              />
-            </div>
+            {/* Unicorn Studio WebGL 背景 */}
+            <UnicornScene
+              projectId="LURRevwKjtvCx6VgsLO7"
+              width="100%"
+              height="100%"
+              scale={1}
+              dpi={1.5}
+              sdkUrl="https://cdn.jsdelivr.net/gh/hiunicornstudio/unicornstudio.js@v2.1.12/dist/unicornStudio.umd.js"
+            />
 
-            <div className="text-center pt-6 pb-2 shrink-0 pointer-events-none relative z-10">
-              <motion.h2
-                className="text-4xl md:text-5xl font-bold text-white mb-3"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
-              >Our Work</motion.h2>
-              <motion.p
-                className="text-white/50 text-sm tracking-[0.2em]"
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
-              >探索 Emotia 的每一个角落</motion.p>
-            </div>
+            {/* 卡片滚动区域（弹簧丝滑滚动） */}
+            <SmoothScrollContainer>
+              <div className="px-4 pb-8" style={{ transformStyle: 'preserve-3d' }}>
+                {/* Our Work 标题 */}
+                <div className="text-center pt-4 pb-6">
+                  <motion.h2
+                    className="text-3xl md:text-4xl font-bold text-white mb-2"
+                    style={{ fontFamily: "'Playfair Display', serif" }}
+                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+                  >Our Work</motion.h2>
+                  <motion.p
+                    className="text-white/40 text-xs tracking-[0.2em]"
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
+                  >探索 Emotia 的每一个角落</motion.p>
+                </div>
 
-            {/* InfiniteMenu 3D 球体 */}
-            <div className="flex-1 relative z-10 -mt-12">
-              <InfiniteMenu
-                items={menuItems}
-                scale={1.4}
-                onItemClick={(active) => window.location.href = active.link}
-                onActiveChange={(_item, idx) => setActiveWorkIndex(idx)}
-              />
-            </div>
-
-            {/* 紫色圆形按钮 - absolute 固定定位在球体下方中央 */}
-            <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-30">
-              <motion.button
-                onClick={() => window.location.href = WORK_ITEMS[activeWorkIndex].path}
-                className="w-14 h-14 rounded-full flex items-center justify-center bg-wysa-green hover:bg-wysa-green/80 shadow-[0_0_30px_rgba(86,115,87,0.5)] transition-all"
-                whileHover={{ scale: 1.1, boxShadow: '0 0 50px hsla(262, 83%, 58%, 0.70)' }}
-                whileTap={{ scale: 0.9 }}
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="12" y1="19" x2="12" y2="5"/>
-                  <polyline points="5 12 12 5 19 12"/>
-                </svg>
-              </motion.button>
-            </div>
-
-            {/* 当前项目名称 - absolute 定位 */}
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-30">
-              <span className="text-white/50 text-xs tracking-wider whitespace-nowrap">{WORK_ITEMS[activeWorkIndex].zh} — {WORK_ITEMS[activeWorkIndex].title}</span>
-            </div>
+                {/* 双列卡片网格 */}
+                <div className="grid grid-cols-2 gap-3 md:gap-4 max-w-2xl mx-auto">
+                  {WORK_ITEMS.map((item, i) => (
+                    <WorkCard key={item.id} item={item} image={getImage(item.id)} index={i} />
+                  ))}
+                </div>
+              </div>
+            </SmoothScrollContainer>
           </motion.div>
         )}
       </AnimatePresence>
