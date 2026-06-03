@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import ColorBends from '../components/ColorBends';
 import FlyingPosters from '../components/FlyingPosters';
 
 import RotatingText from '../components/RotatingText';
+import DecayCard from '../components/DecayCard';
 
 // ==========================================
 // 工作项目
@@ -30,7 +31,7 @@ export default function Intro() {
   const [showUnmutePrompt, setShowUnmutePrompt] = useState(false);
 
   const getImage = (id) => {
-    const map = { 1: '/about3.png', 2: '/about1.jpg', 3: '/agent1.png', 4: '/test.png', 5: '/1.jpg', 6: '/A.png', 7: '/profile.png' };
+    const map = { 1: '/welcome.png', 2: '/屏幕截图 2026-06-03 193442.png', 3: '/屏幕截图 2026-06-03 193701.png', 4: '/屏幕截图 2026-06-03 195238.png', 5: '/1.jpg', 6: '/2.jpg', 7: '/屏幕截图 2026-06-03 194200.png' };
     return map[id] || '/about1.jpg';
   };
 
@@ -49,19 +50,6 @@ export default function Intro() {
     }
   }, [stage]);
 
-  const tiltX = useMotionValue(0);
-  const tiltY = useMotionValue(0);
-  const smoothTiltX = useSpring(tiltX, { stiffness: 60, damping: 15 });
-  const smoothTiltY = useSpring(tiltY, { stiffness: 60, damping: 15 });
-
-  const handleMouseMove = useCallback((e) => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
-    tiltX.set((y - 0.5) * -12);
-    tiltY.set((x - 0.5) * 12);
-  }, []);
 
 
   useEffect(() => {
@@ -129,7 +117,6 @@ export default function Intro() {
       ref={containerRef}
       className="w-full h-screen overflow-hidden relative select-none"
       style={{ fontFamily: "'Neue Haas Grotesk', 'Helvetica Neue', sans-serif" }}
-      onMouseMove={handleMouseMove}
     >
         {showUnmutePrompt && (
           <div className="absolute inset-0 z-40 flex items-center justify-center pointer-events-auto">
@@ -176,17 +163,24 @@ export default function Intro() {
         {stage === 'ripple' && (
           <motion.div
             key="ripple"
-            className="absolute inset-0 bg-wysa-green flex flex-col items-center justify-center z-20 overflow-hidden"
+            className="absolute inset-0 flex flex-col items-center justify-center z-20 overflow-hidden"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.8 } }}
             transition={{ duration: 1 }}
-            style={{ rotateX: smoothTiltX, rotateY: smoothTiltY, perspective: 1200 }}
+            style={{ backgroundImage: 'url(/12.png)', backgroundSize: '100% 100%', backgroundPosition: 'center' }}
           >
+            <DecayCard
+              image="/12.png"
+              baseFrequency={0.008}
+              maxDisplacement={350}
+              movementBound={40}
+              className="!absolute"
+            />
             <motion.div
               className="absolute top-8 left-12 z-10 flex items-center gap-6"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
             >
-              <span className="text-white text-3xl font-extrabold">Emotia</span>
-              <div className="px-4 py-1.5 rounded-xl" style={{ background: '#F9F0ED' }}>
+              <span className="text-white text-3xl font-extrabold drop-shadow-lg">Emotia</span>
+              <div className="px-4 py-1.5 rounded-xl backdrop-blur-sm" style={{ background: '#ffffff' }}>
                 <RotatingText
                   texts={[
                     'HEAL EVERY EMOTIONAL WOUND',
@@ -208,22 +202,22 @@ export default function Intro() {
 
             <div className="relative z-10 text-center px-8" style={{ transform: 'translateZ(80px)' }}>
               <motion.p
-                className="text-white/50 text-base md:text-lg tracking-[0.25em] mb-8"
-                style={{ fontFamily: "'Playfair Display', serif" }}
+                className="text-white text-2xl md:text-4xl lg:text-5xl tracking-[0.15em] mb-8 font-extrabold"
+                style={{ fontFamily: "'Playfair Display', serif", textShadow: '0 4px 24px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4)' }}
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5 }}
               >YOUR PORTABLE MENTAL FIRST AID KIT</motion.p>
 
 
               <motion.p
-                className="text-white/40 text-base tracking-wider mt-10"
-                style={{ fontFamily: "'Playfair Display', serif" }}
+                className="text-white text-lg md:text-xl tracking-wider mt-10 font-bold"
+                style={{ fontFamily: "'Playfair Display', serif", textShadow: '0 3px 16px rgba(0,0,0,0.5)' }}
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2.2 }}
               >在 AI 陪伴与游戏化体验中 完成每一次自我成长</motion.p>
             </div>
 
             <motion.button
               onClick={() => setStage('work')}
-              className="absolute bottom-16 text-white/70 border border-white/30 rounded-full px-12 py-4 text-sm tracking-[0.3em] hover:bg-white/10 hover:border-white/60 transition-all duration-500 z-10"
+              className="absolute bottom-16 text-white/80 border border-white/40 rounded-full px-12 py-4 text-sm tracking-[0.3em] hover:bg-white/15 hover:border-white/70 transition-all duration-500 z-10 backdrop-blur-sm"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2.5 }}
               whileHover={{ scale: 1.05 }}
             >VIEW WORK ↓</motion.button>
