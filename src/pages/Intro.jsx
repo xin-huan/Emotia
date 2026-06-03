@@ -1,24 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
-import UnicornScene from 'unicornstudio-react';
-// ==========================================
-// 稳定随机数
-// ==========================================
-function useStableRandom(seed, count) {
-  return useMemo(() => {
-    const arr = [];
-    for (let i = 0; i < count; i++) {
-      const s = seed + i * 0.1;
-      const r1 = ((Math.sin(s * 12.9898) * 43758.5453) % 1 + 1) % 1;
-      const r2 = ((Math.sin(s * 78.233 + 1) * 43758.5453) % 1 + 1) % 1;
-      const r3 = ((Math.sin(s * 45.164 + 2) * 43758.5453) % 1 + 1) % 1;
-      const r4 = ((Math.sin(s * 93.771 + 3) * 43758.5453) % 1 + 1) % 1;
-      const r5 = ((Math.sin(s * 21.339 + 4) * 43758.5453) % 1 + 1) % 1;
-      arr.push({ r: r1, r2, r3, r4, r5 });
-    }
-    return arr;
-  }, [seed, count]);
-}
+import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motion';
+import ColorBends from '../components/ColorBends';
+import FlyingPosters from '../components/FlyingPosters';
+
+import RotatingText from '../components/RotatingText';
 
 // ==========================================
 // 工作项目
@@ -33,157 +18,13 @@ const WORK_ITEMS = [
   { id: 7, title: 'Profile', zh: '个人空间', desc: 'My Mind Space', path: '/ProfileDev', color: '#E58889' },
 ];
 
-// ==========================================
-// 子组件
-// ==========================================
-function Feather({ data }) {
-  const startX = data.r * 100;
-  const delay = data.r2 * 10;
-  const duration = 8 + data.r3 * 12;
-  const size = 12 + data.r4 * 20;
-  const sway = (data.r5 - 0.5) * 200;
-  return (
-    <motion.div
-      className="absolute pointer-events-none select-none"
-      style={{ left: `${startX}%`, top: -40, fontSize: size, opacity: 0.4 + data.r * 0.3 }}
-      initial={{ y: -40, x: 0, rotate: 0 }}
-      animate={{ y: '110vh', x: [0, sway, -sway, sway * 0.5, 0], rotate: [0, 180, 360, 540, 720] }}
-      transition={{ duration, delay, repeat: Infinity, ease: 'linear', times: [0, 0.25, 0.5, 0.75, 1] }}
-    >🪶</motion.div>
-  );
-}
-
-const RippleText = React.memo(function RippleText({ text }) {
-  const charData = useStableRandom(42, 100);
-  return (
-    <div className="flex flex-wrap justify-center gap-x-4 gap-y-2">
-      {text.split(' ').map((word, wi) => (
-        <span key={wi} className="inline-flex">
-          {word.split('').map((char, ci) => {
-            const d = charData[(wi * 10 + ci) % charData.length];
-            return (
-              <motion.span
-                key={ci}
-                className="inline-block text-6xl md:text-8xl font-bold text-white"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-                animate={{ y: [0, -8, 0, 8, 0], scale: [1, 1.04, 1, 1.04, 1] }}
-                transition={{ duration: 3 + d.r * 2, delay: (wi * 10 + ci) * 0.06, repeat: Infinity, ease: 'easeInOut' }}
-              >{char}</motion.span>
-            );
-          })}
-        </span>
-      ))}
-    </div>
-  );
-});
-
-// ==========================================
-// 丝滑滚动容器（弹簧物理）
-// ==========================================
-function SmoothScrollContainer({ children }) {
-  const containerRef = useRef(null);
-  const contentRef = useRef(null);
-  const scrollY = useMotionValue(0);
-  const smoothY = useSpring(scrollY, { stiffness: 100, damping: 24, mass: 0.7 });
-  const translateY = useTransform(smoothY, v => -v);
-  const maxScrollRef = useRef(0);
-  const touchStartRef = useRef(0);
-  const touchScrollRef = useRef(0);
-
-  const measure = useCallback(() => {
-    const c = containerRef.current;
-    const content = contentRef.current;
-    if (c && content) {
-      maxScrollRef.current = Math.max(0, content.scrollHeight - c.clientHeight);
-      const current = scrollY.get();
-      if (current > maxScrollRef.current) scrollY.set(maxScrollRef.current);
-    }
-  }, []);
-
-  useEffect(() => {
-    measure();
-    const ro = new ResizeObserver(measure);
-    if (containerRef.current) ro.observe(containerRef.current);
-    if (contentRef.current) ro.observe(contentRef.current);
-    return () => ro.disconnect();
-  }, [measure]);
-
-  const handleWheel = useCallback((e) => {
-    const current = scrollY.get();
-    const next = current + e.deltaY;
-    scrollY.set(Math.max(0, Math.min(maxScrollRef.current, next)));
-  }, []);
-
-  return (
-    <div
-      ref={containerRef}
-      className="flex-1 overflow-hidden"
-      onWheel={handleWheel}
-      onTouchStart={(e) => {
-        touchStartRef.current = e.touches[0].clientY;
-        touchScrollRef.current = scrollY.get();
-      }}
-      onTouchMove={(e) => {
-        const dy = touchStartRef.current - e.touches[0].clientY;
-        const next = touchScrollRef.current + dy;
-        scrollY.set(Math.max(0, Math.min(maxScrollRef.current, next)));
-      }}
-    >
-      <motion.div ref={contentRef} style={{ y: translateY }}>
-        {children}
-      </motion.div>
-    </div>
-  );
-}
-
-// ==========================================
-// 3D 折叠漂浮卡片
-// ==========================================
-function WorkCard({ item, image, index }) {
-  const mouseX = useMotionValue(0.5);
-  const mouseY = useMotionValue(0.5);
-  const springRotateX = useSpring(useTransform(mouseY, [0, 1], [12, -12]), { stiffness: 260, damping: 28 });
-  const springRotateY = useSpring(useTransform(mouseX, [0, 1], [-12, 12]), { stiffness: 260, damping: 28 });
-  const springZ = useSpring(useTransform(mouseY, [0, 0.5, 1], [0, 25, 0]), { stiffness: 260, damping: 28 });
-  const springScale = useSpring(useTransform(mouseY, [0, 1], [1, 1.04]), { stiffness: 260, damping: 28 });
-
-  return (
-    <motion.div
-      className="cursor-pointer rounded-xl overflow-hidden bg-white/5"
-      style={{
-        rotateX: springRotateX,
-        rotateY: springRotateY,
-        z: springZ,
-        scale: springScale,
-        transformStyle: 'preserve-3d',
-      }}
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.6 + index * 0.08, duration: 0.5, ease: 'easeOut' }}
-      onMouseMove={(e) => {
-        const r = e.currentTarget.getBoundingClientRect();
-        mouseX.set((e.clientX - r.left) / r.width);
-        mouseY.set((e.clientY - r.top) / r.height);
-      }}
-      onMouseLeave={() => { mouseX.set(0.5); mouseY.set(0.5); }}
-      onClick={() => { window.location.href = item.path; }}
-    >
-      <div className="aspect-[4/3] overflow-hidden">
-        <img src={image} alt={item.title} className="w-full h-full object-cover" />
-      </div>
-      <div className="p-3" style={{ transform: 'translateZ(10px)' }}>
-        <h3 className="text-white font-semibold text-sm md:text-base">{item.title}</h3>
-        <p className="text-white/50 text-xs mt-1">{item.zh}</p>
-      </div>
-    </motion.div>
-  );
-}
 
 // ==========================================
 // 主组件
 // ==========================================
 export default function Intro() {
   const [stage, setStage] = useState('eye');
+  const [activeIndex, setActiveIndex] = useState(0);
   const containerRef = useRef(null);
   const audioRef = useRef(null);
   const [showUnmutePrompt, setShowUnmutePrompt] = useState(false);
@@ -212,8 +53,6 @@ export default function Intro() {
   const tiltY = useMotionValue(0);
   const smoothTiltX = useSpring(tiltX, { stiffness: 60, damping: 15 });
   const smoothTiltY = useSpring(tiltY, { stiffness: 60, damping: 15 });
-
-  const featherData = useStableRandom(1, 15);
 
   const handleMouseMove = useCallback((e) => {
     if (!containerRef.current) return;
@@ -281,6 +120,10 @@ export default function Intro() {
     setStage('ripple');
   };
 
+  const posterImages = useMemo(() => WORK_ITEMS.map(item => getImage(item.id)), []);
+
+  const handleActiveChange = useCallback((idx) => setActiveIndex(idx), []);
+
   return (
     <div
       ref={containerRef}
@@ -293,7 +136,7 @@ export default function Intro() {
             <button
               onClick={handleUnmuteClick}
               className="bg-black/70 text-white px-6 py-3 rounded-full backdrop-blur-sm"
-            >进入Emotia</button>
+            >欢迎光临</button>
           </div>
         )}
       {/* ==================== 阶段 1：Unicorn 入口 ==================== */}
@@ -339,23 +182,42 @@ export default function Intro() {
             style={{ rotateX: smoothTiltX, rotateY: smoothTiltY, perspective: 1200 }}
           >
             <motion.div
-              className="absolute top-8 left-12 text-white text-3xl font-extrabold z-10"
+              className="absolute top-8 left-12 z-10 flex items-center gap-6"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-            >Emotia</motion.div>
-
-            {featherData.map((d, i) => <Feather key={i} data={d} />)}
+            >
+              <span className="text-white text-3xl font-extrabold">Emotia</span>
+              <div className="px-4 py-1.5 rounded-xl" style={{ background: '#F9F0ED' }}>
+                <RotatingText
+                  texts={[
+                    'HEAL EVERY EMOTIONAL WOUND',
+                    'FIND YOUR INNER PEACE',
+                    'EMBRACE YOUR JOURNEY',
+                    'YOU ARE NOT ALONE',
+                    'GROW THROUGH WHAT YOU GO THROUGH'
+                  ]}
+                  splitBy="words"
+                  staggerDuration={0.02}
+                  staggerFrom="first"
+                  rotationInterval={3000}
+                  transition={{ type: 'spring', damping: 20, stiffness: 200 }}
+                  mainClassName="text-sm md:text-base font-bold text-wysa-green justify-center whitespace-nowrap"
+                  elementLevelClassName="text-wysa-green"
+                />
+              </div>
+            </motion.div>
 
             <div className="relative z-10 text-center px-8" style={{ transform: 'translateZ(80px)' }}>
               <motion.p
-                className="text-white/60 text-lg tracking-[0.3em] mb-12"
+                className="text-white/50 text-base md:text-lg tracking-[0.25em] mb-8"
                 style={{ fontFamily: "'Playfair Display', serif" }}
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }}
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5 }}
               >YOUR PORTABLE MENTAL FIRST AID KIT</motion.p>
-              <RippleText text="HEAL EVERY EMOTIONAL WOUND" />
+
+
               <motion.p
-                className="text-white/40 text-base tracking-wider mt-16"
+                className="text-white/40 text-base tracking-wider mt-10"
                 style={{ fontFamily: "'Playfair Display', serif" }}
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2 }}
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2.2 }}
               >在 AI 陪伴与游戏化体验中 完成每一次自我成长</motion.p>
             </div>
 
@@ -374,46 +236,127 @@ export default function Intro() {
         {stage === 'work' && (
           <motion.div
             key="work"
-            className="absolute inset-0 z-10 flex flex-col"
+            className="absolute inset-0 z-10"
             style={{ perspective: 1000 }}
             initial={{ y: '100%' }} animate={{ y: 0 }}
             exit={{ y: '100%', transition: { duration: 0.6, ease: 'easeInOut' } }}
             transition={{ type: 'spring', stiffness: 60, damping: 20 }}
           >
-            {/* Unicorn Studio WebGL 背景 */}
-            <UnicornScene
-              projectId="LURRevwKjtvCx6VgsLO7"
-              width="100%"
-              height="100%"
-              scale={1}
-              dpi={1.5}
-              sdkUrl="https://cdn.jsdelivr.net/gh/hiunicornstudio/unicornstudio.js@v2.1.12/dist/unicornStudio.umd.js"
-            />
+            {/* ColorBends 背景 */}
+            <div className="absolute inset-0" style={{ background: '#c7ebdf' }}>
+              <ColorBends
+                rotation={90}
+                speed={0.2}
+                colors={["#10B981"]}
+                transparent
+                autoRotate={0}
+                scale={1}
+                frequency={1}
+                warpStrength={1}
+                mouseInfluence={1}
+                parallax={0.5}
+                noise={0.15}
+                iterations={1}
+                intensity={1.5}
+                bandWidth={6}
+              />
+            </div>
 
-            {/* 卡片滚动区域（弹簧丝滑滚动） */}
-            <SmoothScrollContainer>
-              <div className="px-4 pb-8" style={{ transformStyle: 'preserve-3d' }}>
-                {/* Our Work 标题 */}
-                <div className="text-center pt-4 pb-6">
-                  <motion.h2
-                    className="text-3xl md:text-4xl font-bold text-white mb-2"
-                    style={{ fontFamily: "'Playfair Display', serif" }}
-                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-                  >Our Work</motion.h2>
-                  <motion.p
-                    className="text-white/40 text-xs tracking-[0.2em]"
-                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-                  >探索 Emotia 的每一个角落</motion.p>
-                </div>
-
-                {/* 双列卡片网格 */}
-                <div className="grid grid-cols-2 gap-3 md:gap-4 max-w-2xl mx-auto">
-                  {WORK_ITEMS.map((item, i) => (
-                    <WorkCard key={item.id} item={item} image={getImage(item.id)} index={i} />
-                  ))}
-                </div>
+            {/* 左侧卡片 + 右侧详情 */}
+            <div className="absolute inset-0 z-10 flex">
+              {/* 左侧：FlyingPosters */}
+              <div className="w-1/2 h-full relative">
+                <FlyingPosters
+                  items={posterImages}
+                  planeWidth={240}
+                  planeHeight={320}
+                  distortion={3}
+                  scrollEase={0.1}
+                  cameraFov={45}
+                  cameraZ={20}
+                  onActiveChange={handleActiveChange}
+                />
               </div>
-            </SmoothScrollContainer>
+
+              {/* 右侧：功能介绍面板 */}
+              <div className="w-1/2 h-full flex items-center justify-center p-12">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activeIndex}
+                    className="w-full max-w-sm"
+                    initial={{ opacity: 0, x: 80 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -80 }}
+                    transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+                  >
+                    <div className="bg-black/10 backdrop-blur-2xl rounded-3xl p-10 border border-white/[0.08] shadow-2xl shadow-black/30">
+                      <h2
+                        className="text-5xl md:text-6xl font-bold text-white mb-4"
+                        style={{ fontFamily: "'Playfair Display', serif" }}
+                      >{WORK_ITEMS[activeIndex].title}</h2>
+                      <p className="text-white/70 text-lg mb-2">{WORK_ITEMS[activeIndex].zh}</p>
+                      <p className="text-white/40 text-sm mb-8">{WORK_ITEMS[activeIndex].desc}</p>
+
+                      <motion.button
+                        className="inline-flex items-center gap-3 text-white border border-white/30 rounded-full px-8 py-3 text-sm tracking-[0.2em] hover:bg-white/15 hover:border-white/60 transition-all duration-500"
+                        onClick={() => { window.location.href = WORK_ITEMS[activeIndex].path; }}
+                        whileHover={{ scale: 1.05, gap: '12px' }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        进入
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="5" y1="12" x2="19" y2="12" />
+                          <polyline points="12 5 19 12 12 19" />
+                        </svg>
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            </div>
+
+            {/* Emotia Logo */}
+            <motion.div
+              className="absolute top-8 left-12 text-white text-3xl font-extrabold z-20"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+            >Emotia</motion.div>
+
+            {/* 标题 */}
+            <div className="absolute top-0 left-0 right-0 text-center pt-4 pb-6 pointer-events-none z-20">
+              <motion.h2
+                className="text-5xl md:text-7xl font-bold text-white mb-2"
+                style={{ fontFamily: "'Playfair Display', serif" }}
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+              >My Work</motion.h2>
+            </div>
+
+            {/* 底部技术栈 - 可横向滚动 */}
+            <motion.div
+              className="absolute bottom-6 left-0 right-0 z-20 overflow-x-auto scrollbar-hide"
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
+            >
+              <div className="flex items-center gap-3 px-8 min-w-max justify-center">
+                {[
+                  { name: 'React', color: '#61DAFB', icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none"><circle cx="12" cy="12" r="2.5" fill="#61DAFB"/><ellipse cx="12" cy="12" rx="10.5" ry="4" stroke="#61DAFB" strokeWidth="1"/><ellipse cx="12" cy="12" rx="4" ry="10.5" stroke="#61DAFB" strokeWidth="1" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10.5" ry="4" stroke="#61DAFB" strokeWidth="1" transform="rotate(120 12 12)"/></svg> },
+                  { name: 'Three.js', color: '#fff', icon: <svg viewBox="0 0 24 24" className="w-4 h-4"><path d="M12 2L3 7v10l9 5 9-5V7l-9-5z" stroke="#fff" strokeWidth="1.2" fill="none"/><path d="M12 22V12M3 7l9 5M21 7l-9 5" stroke="#fff" strokeWidth="0.5" opacity="0.5"/></svg> },
+                  { name: 'Framer', color: '#fff', icon: <svg viewBox="0 0 24 24" className="w-4 h-4"><path d="M4 16h8l-4 4h8l4-4M4 8h12l-4 4h8M4 4h16l-4 4" stroke="#fff" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+                  { name: 'Tailwind', color: '#06B6D4', icon: <svg viewBox="0 0 24 24" className="w-4 h-4"><path d="M12 5C8.5 5 6.5 7 6 9.5c1.2-1.2 2.6-1.7 4.2-1.3.9.2 1.5.9 2.3 1.6 1.2 1.2 2.6 2.2 5.5 1 0-2.5-2-4.8-6-4.8z" fill="#06B6D4"/><path d="M12 12c-3.5 0-5.5 2-6 4.5 1.2-1.2 2.6-1.7 4.2-1.3.9.2 1.5.9 2.3 1.6 1.2 1.2 2.6 2.2 5.5 1 0-2.5-2-4.8-6-4.8z" fill="#06B6D4" opacity="0.5"/></svg> },
+                  { name: 'WebGL', color: '#fff', icon: <svg viewBox="0 0 24 24" className="w-4 h-4"><rect x="3" y="5" width="18" height="14" rx="2" stroke="#fff" strokeWidth="1.2" fill="none"/><path d="M3 8h18" stroke="#fff" strokeWidth="0.6"/><circle cx="7" cy="6.5" r="0.4" fill="#fff"/><circle cx="8.5" cy="6.5" r="0.4" fill="#fff"/><circle cx="10" cy="6.5" r="0.4" fill="#fff"/></svg> },
+                  { name: 'OGL', color: '#fff', icon: <svg viewBox="0 0 24 24" className="w-4 h-4"><polygon points="12,2 22,7 22,17 12,22 2,17 2,7" stroke="#fff" strokeWidth="1.2" fill="none"/><polygon points="12,7 7,10 7,14 12,17 17,14 17,10" stroke="#fff" strokeWidth="0.8" fill="none"/></svg> },
+                  { name: 'Node.js', color: '#83CD29', icon: <svg viewBox="0 0 24 24" className="w-4 h-4"><path d="M12 2L3 7v10l9 5 9-5V7l-9-5z" fill="#83CD29" opacity="0.2" stroke="#83CD29" strokeWidth="1"/><path d="M12 7v10M7 10v4M17 10v4" stroke="#83CD29" strokeWidth="0.8"/></svg> },
+                  { name: 'Vite', color: '#BD34FE', icon: <svg viewBox="0 0 24 24" className="w-4 h-4"><path d="M21.2 4.8L12 21.6 2.8 4.8l3.44 5.73L12 4.8l5.76 5.73L21.2 4.8z" fill="none" stroke="#BD34FE" strokeWidth="1.2" strokeLinejoin="round"/></svg> },
+                  { name: 'OpenAI', color: '#74AA9C', icon: <svg viewBox="0 0 24 24" className="w-4 h-4"><circle cx="12" cy="12" r="9" stroke="#74AA9C" strokeWidth="1.2" fill="none"/><circle cx="12" cy="12" r="3" stroke="#74AA9C" strokeWidth="0.8" fill="none"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3" stroke="#74AA9C" strokeWidth="0.6"/></svg> },
+                ].map((tech, i) => (
+                  <div
+                    key={tech.name}
+                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/10 backdrop-blur-md border border-white/[0.08] whitespace-nowrap shrink-0"
+                  >
+                    {tech.icon}
+                    <span className="text-white/70 text-xs font-medium tracking-wider">{tech.name}</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

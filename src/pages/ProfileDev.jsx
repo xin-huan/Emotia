@@ -42,7 +42,7 @@ const PsychRadarChart = ({ data, size = 300 }) => {
         initial={{ opacity: 0, scale: 0.5 }}
         animate={{ opacity: 1, scale: 1 }}
         points={dataPoints}
-        fill="rgba(229, 136, 137, 0.4)"
+        fill="rgba(229, 136, 137, 0.3)"
         stroke="#E58889"
         strokeWidth="3"
         strokeLinejoin="round"
@@ -184,15 +184,16 @@ export default function ProfileFullDemo() {
       <div className="max-w-6xl w-full flex gap-8">
 
         {/* --- 左侧：导航菜单 --- */}
-        <div data-aos="fade-right" className="w-64 space-y-4 sticky top-28 self-start">
-          <div className="bg-white p-6 rounded-[2rem] shadow-sm text-center mb-6 border border-pink-50">
+        <div data-aos="fade-right" className="w-64 space-y-4 sticky top-28 self-start shrink-0">
+          <div className="bg-white p-6 rounded-[2rem] shadow-sm text-center mb-6 border border-[#FDF0F0]">
              <div className="text-4xl mb-2">🧑‍🚀</div>
              <p className="font-black text-wysa-green uppercase tracking-tighter">My Mind Space</p>
           </div>
           <nav className="bg-white p-4 rounded-[2rem] shadow-sm space-y-2">
-            <button onClick={() => {setActiveTab('sessions'); setSessionDetail(null)}} className={`w-full p-4 rounded-2xl text-left font-bold transition-all ${activeTab==='sessions'?'bg-pink-50 text-pink-500':'text-gray-400 hover:bg-gray-50'}`}>📈 疗愈回溯</button>
-            <button onClick={() => setActiveTab('tests')} className={`w-full p-4 rounded-2xl text-left font-bold transition-all ${activeTab==='tests'?'bg-pink-50 text-pink-500':'text-gray-400 hover:bg-gray-50'}`}>📑 测评历史</button>
-            <button onClick={() => setActiveTab('social')} className={`w-full p-4 rounded-2xl text-left font-bold transition-all ${activeTab==='social'?'bg-pink-100 text-pink-500':'text-gray-400 hover:bg-gray-50'}`}>🔔 互动消息</button>
+            <button onClick={() => {setActiveTab('sessions'); setSessionDetail(null)}} className={`w-full p-4 rounded-2xl text-left font-bold transition-all ${activeTab==='sessions'?'bg-[#FDF0F0] text-[#E58889]':'text-gray-400 hover:bg-gray-50'}`}>📈 疗愈回溯</button>
+            <button onClick={() => {setActiveTab('history'); setSessionDetail(null)}} className={`w-full p-4 rounded-2xl text-left font-bold transition-all ${activeTab==='history'?'bg-[#FDF0F0] text-[#E58889]':'text-gray-400 hover:bg-gray-50'}`}>📋 历史记录</button>
+            <button onClick={() => setActiveTab('tests')} className={`w-full p-4 rounded-2xl text-left font-bold transition-all ${activeTab==='tests'?'bg-[#FDF0F0] text-[#E58889]':'text-gray-400 hover:bg-gray-50'}`}>📑 测评历史</button>
+            <button onClick={() => setActiveTab('social')} className={`w-full p-4 rounded-2xl text-left font-bold transition-all ${activeTab==='social'?'bg-[#FCE8E8] text-[#E58889]':'text-gray-400 hover:bg-gray-50'}`}>🔔 互动消息</button>
             <button onClick={() => {setActiveTab('calendar'); setSessionDetail(null)}} className={`w-full p-4 rounded-2xl text-left font-bold transition-all ${activeTab==='calendar'?'bg-orange-50 text-orange-500':'text-gray-400 hover:bg-gray-50'}`}>☀️ 阳光手账</button>
             <button onClick={() => {setActiveTab('achievements'); setSessionDetail(null)}} className={`w-full p-4 rounded-2xl text-left font-bold transition-all ${activeTab==='achievements'?'bg-yellow-50 text-yellow-600':'text-gray-400 hover:bg-gray-50'}`}>🏆 荣誉勋章</button>
           </nav>
@@ -206,7 +207,31 @@ export default function ProfileFullDemo() {
             <div className="animate-in fade-in duration-500">
               {!sessionDetail ? (
                 <>
-                  <div className="bg-white rounded-[3rem] p-10 shadow-sm border border-pink-100">
+                  {/* ===== 三个统计卡片 ===== */}
+                  <div className="grid grid-cols-3 gap-4 mb-6">
+                    {(() => {
+                      const totalAgent = usageData.reduce((s, d) => s + d.agent, 0);
+                      const totalTest = usageData.reduce((s, d) => s + d.test, 0);
+                      const totalPost = usageData.reduce((s, d) => s + d.post, 0);
+                      const cards = [
+                        { label: 'Agent 对话', value: totalAgent, icon: '🤖', color: 'from-white to-gray-50', textColor: 'text-[#E58889]' },
+                        { label: '心理测评', value: totalTest, icon: '📑', color: 'from-white to-gray-50', textColor: 'text-[#E58889]' },
+                        { label: '社区发帖', value: totalPost, icon: '💬', color: 'from-white to-gray-50', textColor: 'text-[#E58889]' },
+                      ];
+                      return cards.map(card => (
+                        <div key={card.label} className={`bg-gradient-to-br ${card.color} rounded-[2rem] p-6 shadow-sm border border-white/50`}>
+                          <div className="flex items-center gap-3 mb-3">
+                            <span className="text-2xl">{card.icon}</span>
+                            <span className="text-xs font-black text-gray-400 uppercase tracking-wider">{card.label}</span>
+                          </div>
+                          <div className={`text-4xl font-black ${card.textColor}`}>{card.value}</div>
+                          <div className="text-[10px] text-gray-400 mt-1 font-bold">近{period}天累计</div>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+
+                  <div className="bg-white rounded-[3rem] p-10 shadow-sm border border-[#E58889]/20">
                     <h3 className="text-2xl font-black text-gray-800 mb-6">每周状态回溯</h3>
 
                     <div className="flex justify-between items-center mb-10">
@@ -214,41 +239,43 @@ export default function ProfileFullDemo() {
                         <span className="text-lg">🌿</span> 疗愈足迹 (全站活跃度)
                       </h4>
                       <div className="flex gap-2 bg-gray-100 p-1 rounded-full text-[10px] shadow-inner">
-                        <button onClick={() => setPeriod(7)} className={`px-4 py-1.5 rounded-full transition-all ${period===7?'bg-pink-500 text-white shadow-md':'text-gray-400'}`}>近一周</button>
-                        <button onClick={() => setPeriod(30)} className={`px-4 py-1.5 rounded-full transition-all ${period===30?'bg-pink-500 text-white shadow-md':'text-gray-400'}`}>近一月</button>
+                        <button onClick={() => setPeriod(7)} className={`px-4 py-1.5 rounded-full transition-all ${period===7?'bg-[#E58889] text-white shadow-md':'text-gray-400'}`}>近一周</button>
+                        <button onClick={() => setPeriod(30)} className={`px-4 py-1.5 rounded-full transition-all ${period===30?'bg-[#E58889] text-white shadow-md':'text-gray-400'}`}>近一月</button>
                       </div>
                     </div>
 
-                    <div className="relative h-48 w-full group">
-                      <svg viewBox="0 0 1000 200" className="w-full h-full overflow-visible">
+                    <div className="relative h-56 w-full group">
+                      <svg viewBox="0 0 1000 260" className="w-full h-full overflow-visible">
                         <defs>
                           <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#F472B6" stopOpacity="0.3" />
-                            <stop offset="100%" stopColor="#F472B6" stopOpacity="0" />
+                            <stop offset="0%" stopColor="#E58889" stopOpacity="0.3" />
+                            <stop offset="100%" stopColor="#E58889" stopOpacity="0" />
                           </linearGradient>
                         </defs>
 
                         {usageData.length > 1 && (() => {
+                          const chartTop = 15, chartBottom = 220;
+                          const chartH = chartBottom - chartTop;
                           const getX = (i) => (i / (usageData.length - 1)) * 1000;
-                          const getY = (val) => 180 - (Math.min(val, 5) * 35);
+                          const getY = (val) => chartBottom - (Math.min(val, 5) * (chartH / 5));
 
                           const points = usageData.map((d, i) => `${getX(i)},${getY(d.total)}`).join(' ');
                           const d_path = `M ${points}`;
-                          const d_area = `M ${getX(0)},200 ${points} L ${getX(usageData.length-1)},200 Z`;
+                          const d_area = `M ${getX(0)},${chartBottom} ${points} L ${getX(usageData.length-1)},${chartBottom} Z`;
 
                           return (
                             <>
                               <path d={d_area} fill="url(#areaGradient)" />
-                              <path d={d_path} fill="none" stroke="#F472B6" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+                              <path d={d_path} fill="none" stroke="#E58889" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
                               {usageData.map((day, i) => (
                                 <g key={i} className="group/item">
                                   <circle
                                     cx={getX(i)} cy={getY(day.total)} r="8"
-                                    className="fill-white stroke-pink-500 stroke-[4px] cursor-help transition-all group-hover/item:r-10"
+                                    className="fill-white stroke-[#E58889] stroke-[4px] cursor-help transition-all group-hover/item:r-10"
                                   />
                                   <foreignObject x={getX(i) - 60} y={getY(day.total) - 85} width="120" height="70" className="opacity-0 group-hover/item:opacity-100 transition-opacity pointer-events-none">
                                     <div className="bg-gray-900/95 backdrop-blur text-white p-3 rounded-2xl shadow-2xl border border-white/20 text-center">
-                                      <p className="text-[10px] font-bold text-pink-400 mb-1">{day.date}</p>
+                                      <p className="text-[10px] font-bold text-[#E58889] mb-1">{day.date}</p>
                                       <div className="text-[9px] space-y-0.5 opacity-90">
                                         {day.agent > 0 && <p>🤖 Agent对话: {day.agent}次</p>}
                                         {day.test > 0 && <p>📑 心理测评: {day.test}次</p>}
@@ -264,7 +291,7 @@ export default function ProfileFullDemo() {
                         })()}
                       </svg>
 
-                      <div className="flex justify-between mt-6 px-1">
+                      <div className="flex justify-between mt-2 px-1">
                         {usageData.filter((_, i) => i % (period === 30 ? 5 : 1) === 0).map((day, i) => (
                           <span key={i} className="text-[10px] text-gray-400 font-bold tracking-tighter">{day.date}</span>
                         ))}
@@ -272,30 +299,111 @@ export default function ProfileFullDemo() {
                     </div>
                   </div>
 
-                  <div className="bg-white rounded-[3rem] p-10 shadow-sm border border-pink-100">
-                    <h3 className="text-sm font-bold text-gray-400 mb-4 uppercase tracking-widest">历史对话清单</h3>
-                    <div className="space-y-3">
-                      {data.sessions.map(s => (
-                        <div key={s.id} onClick={() => handleLoadDetail(s.id)} className="p-6 bg-white border-2 border-gray-50 rounded-[1.5rem] cursor-pointer hover:border-pink-200 hover:shadow-md transition-all flex justify-between items-center group">
-                          <div>
-                            <span className="text-[10px] text-gray-300 font-bold uppercase">{new Date(s.created_at).toLocaleDateString()}</span>
-                            <p className="font-bold text-wysa-green mt-1">{s.raw_event}</p>
+                  {/* ===== 图表区 ===== */}
+                  <div className="mt-6 space-y-6">
+                    {/* 叠加甜甜圈图 + 数据面板 */}
+                    <div className="bg-white rounded-[3rem] p-8 shadow-sm border border-[#E58889]/20">
+                      <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6">活动类型占比</h4>
+                      {(() => {
+                        const totalAgent = usageData.reduce((s, d) => s + d.agent, 0);
+                        const totalTest = usageData.reduce((s, d) => s + d.test, 0);
+                        const totalPost = usageData.reduce((s, d) => s + d.post, 0);
+                        const totalAll = totalAgent + totalTest + totalPost || 1;
+
+                        const rings = [
+                          { val: totalAgent, color: '#E58889', label: 'Agent 对话', pct: Math.round((totalAgent / totalAll) * 100) || 0 },
+                          { val: totalTest, color: '#567357', label: '心理测评', pct: Math.round((totalTest / totalAll) * 100) || 0 },
+                          { val: totalPost, color: '#8BA98D', label: '社区发帖', pct: Math.round((totalPost / totalAll) * 100) || 0 }
+                        ];
+
+                        const cx = 140, cy = 140;
+                        const ringWidth = 18;
+                        const ringGap = 6;
+                        // outermost ring = 110, middle = 86, inner = 62
+                        const outerR = [110, 110 - ringWidth - ringGap, 110 - 2 * (ringWidth + ringGap)];
+
+                        return (
+                          <div className="flex items-center gap-8">
+                            {/* 左侧：三个同心圆环 */}
+                            <div className="shrink-0">
+                              <svg viewBox="0 0 280 280" className="w-[220px] h-[220px]">
+                                {/* background tracks */}
+                                {rings.map((_, i) => (
+                                  <circle key={`bg-${i}`} cx={cx} cy={cy} r={outerR[i]} fill="none" stroke="#f3f4f6" strokeWidth={ringWidth} />
+                                ))}
+                                {/* colored arcs - animated */}
+                                {rings.map((r, i) => {
+                                  if (r.val === 0) return null;
+                                  const angle = (r.val / totalAll) * 360;
+                                  const startAngle = -90;
+                                  const endAngle = startAngle + angle;
+                                  const rad = outerR[i];
+                                  const toRad = deg => (deg * Math.PI) / 180;
+                                  const x1 = cx + rad * Math.cos(toRad(startAngle));
+                                  const y1 = cy + rad * Math.sin(toRad(startAngle));
+                                  const x2 = cx + rad * Math.cos(toRad(endAngle));
+                                  const y2 = cy + rad * Math.sin(toRad(endAngle));
+                                  const large = angle > 180 ? 1 : 0;
+                                  const d = `M ${x1} ${y1} A ${rad} ${rad} 0 ${large} 1 ${x2} ${y2}`;
+                                  return (
+                                    <motion.path
+                                      key={r.label}
+                                      d={d}
+                                      fill="none"
+                                      stroke={r.color}
+                                      strokeWidth={ringWidth}
+                                      strokeLinecap="round"
+                                      opacity="0.9"
+                                      pathLength={1}
+                                      initial={{ pathLength: 0 }}
+                                      animate={{ pathLength: 1 }}
+                                      transition={{ duration: 0.8, delay: i * 0.25, ease: 'easeOut' }}
+                                    />
+                                  );
+                                })}
+                                {/* center total */}
+                                <motion.text
+                                  x={cx} y={cy - 6} textAnchor="middle"
+                                  className="text-2xl font-black fill-gray-800"
+                                  initial={{ opacity: 0, scale: 0.5 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  transition={{ duration: 0.5, delay: 0.8 }}
+                                >{totalAll}</motion.text>
+                                <text x={cx} y={cy + 16} textAnchor="middle" className="text-[10px] font-bold fill-gray-400">总次数</text>
+                              </svg>
+                            </div>
+                            {/* 右侧：数据列表 */}
+                            <div className="flex-1 space-y-4">
+                              {rings.map(r => (
+                                <div key={r.label} className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-4 h-4 rounded-full" style={{ background: r.color }} />
+                                    <span className="text-sm font-bold text-gray-700">{r.label}</span>
+                                  </div>
+                                  <div className="flex items-center gap-4">
+                                    <span className="text-lg font-black text-gray-800">{r.val}</span>
+                                    <span className="text-sm font-bold w-10 text-right" style={{ color: r.color }}>{r.pct}%</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                          <div className="text-pink-400 font-black opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">→</div>
-                        </div>
-                      ))}
+                        );
+                      })()}
                     </div>
+
                   </div>
+
                 </>
               ) : (
                 <div className="animate-in slide-in-from-right-4 duration-500 space-y-8">
-                  <button onClick={() => setSessionDetail(null)} className="text-pink-500 font-bold flex items-center gap-2 hover:bg-pink-50 p-2 rounded-xl transition-all">
+                  <button onClick={() => setSessionDetail(null)} className="text-[#E58889] font-bold flex items-center gap-2 hover:bg-[#FDF0F0] p-2 rounded-xl transition-all">
                     <span className="text-xl">←</span> 返回清单
                   </button>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                     <div className="bg-gray-900 text-white p-8 rounded-[2.5rem] shadow-xl">
-                      <h4 className="text-pink-400 text-[10px] font-black mb-3 uppercase tracking-tighter">01 事件回溯</h4>
+                      <h4 className="text-[#D0737A] text-[10px] font-black mb-3 uppercase tracking-tighter">01 事件回溯</h4>
                       <p className="text-lg font-medium leading-relaxed">{sessionDetail.raw_event}</p>
                     </div>
 
@@ -303,9 +411,9 @@ export default function ProfileFullDemo() {
                       <h4 className="text-gray-400 text-[10px] font-black mb-4 uppercase tracking-tighter">02 情绪指纹</h4>
                       <div className="flex flex-wrap gap-2">
                         {Object.entries(sessionDetail.emotion_labels || {}).map(([tag, score]) => (
-                          <div key={tag} className="bg-pink-50 px-4 py-2 rounded-full border border-pink-100 flex items-center gap-2">
-                             <span className="text-pink-500 font-black text-xs">{tag}</span>
-                             <span className="text-pink-300 font-bold text-[10px]">{Math.round(score)}</span>
+                          <div key={tag} className="bg-[#FDF0F0] px-4 py-2 rounded-full border border-[#E58889]/20 flex items-center gap-2">
+                             <span className="text-[#E58889] font-black text-xs">{tag}</span>
+                             <span className="text-[#EBB3B7] font-bold text-[10px]">{Math.round(score)}</span>
                           </div>
                         ))}
                       </div>
@@ -371,24 +479,76 @@ export default function ProfileFullDemo() {
             </div>
           )}
 
-          {/* TAB 2: 测评历史 */}
+          {/* TAB 2: 历史记录 */}
+          {activeTab === 'history' && (
+            <div className="animate-in fade-in duration-500">
+              {!sessionDetail ? (
+                <div className="bg-white rounded-[3rem] p-10 shadow-sm border border-[#E58889]/20">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-2xl font-black text-gray-800">历史对话清单</h3>
+                    <span className="text-xs font-bold text-gray-300 bg-gray-100 px-3 py-1 rounded-full">{data.sessions.length} 条记录</span>
+                  </div>
+                  <div className="space-y-3">
+                    {data.sessions.map(s => (
+                      <div key={s.id} onClick={() => handleLoadDetail(s.id)} className="p-6 bg-white border-2 border-gray-50 rounded-[1.5rem] cursor-pointer hover:border-[#E58889]/30 hover:shadow-md transition-all flex justify-between items-center group">
+                        <div>
+                          <span className="text-[10px] text-gray-300 font-bold uppercase">{new Date(s.created_at).toLocaleDateString()}</span>
+                          <p className="font-bold text-wysa-green mt-1">{s.raw_event}</p>
+                        </div>
+                        <div className="text-[#D0737A] font-black opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">→</div>
+                      </div>
+                    ))}
+                    {data.sessions.length === 0 && (
+                      <div className="text-center py-20"><p className="text-gray-300 font-bold">暂无对话记录</p></div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                /* session detail (same as 疗愈回溯) */
+                <div className="animate-in slide-in-from-right-4 duration-500 space-y-8">
+                  <button onClick={() => setSessionDetail(null)} className="text-[#E58889] font-bold flex items-center gap-2 hover:bg-[#FDF0F0] p-2 rounded-xl transition-all">
+                    <span className="text-xl">←</span> 返回清单
+                  </button>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div className="bg-gray-900 text-white p-8 rounded-[2.5rem] shadow-xl">
+                      <h4 className="text-[#D0737A] text-[10px] font-black mb-3 uppercase tracking-tighter">01 事件回溯</h4>
+                      <p className="text-lg font-medium leading-relaxed">{sessionDetail.raw_event}</p>
+                    </div>
+                    <div className="bg-white border-2 border-gray-100 p-8 rounded-[2.5rem]">
+                      <h4 className="text-gray-400 text-[10px] font-black mb-4 uppercase tracking-tighter">02 情绪指纹</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {Object.entries(sessionDetail.emotion_labels || {}).map(([tag, score]) => (
+                          <div key={tag} className="bg-[#FDF0F0] px-4 py-2 rounded-full border border-[#E58889]/20 flex items-center gap-2">
+                            <span className="text-[#E58889] font-black text-xs">{tag}</span>
+                            <span className="text-[#EBB3B7] font-bold text-[10px]">{Math.round(score)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: 测评历史 */}
           {activeTab === 'tests' && (
-            <div className="bg-white rounded-[3rem] p-10 shadow-sm border border-pink-100 animate-in fade-in duration-500">
+            <div className="bg-white rounded-[3rem] p-10 shadow-sm border border-[#E58889]/20 animate-in fade-in duration-500">
               <h3 className="text-2xl font-black text-gray-800 mb-6">量表测试记录</h3>
               <div className="grid gap-6">
                 {data.tests.map((t, i) => (
                   <div
                     key={i}
                     onClick={() => setSelectedTestResult(t)}
-                    className="p-8 bg-white border-2 border-gray-50 rounded-[2.5rem] flex justify-between items-center hover:shadow-xl transition-all hover:border-pink-100 group">
+                    className="p-8 bg-white border-2 border-gray-50 rounded-[2.5rem] flex justify-between items-center hover:shadow-xl transition-all hover:border-[#E58889]/20 group">
                     <div className="flex-1 pr-10">
-                      <span className="bg-pink-50 text-pink-500 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">{new Date(t.created_at).toLocaleDateString()}</span>
+                      <span className="bg-[#FDF0F0] text-[#E58889] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">{new Date(t.created_at).toLocaleDateString()}</span>
                       <h4 className="font-black text-wysa-green text-xl mt-3">{t.tests?.title || "常规测评"}</h4>
-                      <div className="bg-gray-50 p-4 rounded-2xl mt-4 border-l-4 border-pink-400">
+                      <div className="bg-gray-50 p-4 rounded-2xl mt-4 border-l-4 border-[#E58889]">
                          <p className="text-xs text-gray-500 leading-relaxed italic">“{t.result_level}”</p>
                       </div>
                     </div>
-                    <div className="text-6xl font-black text-gray-100 group-hover:text-pink-100 transition-colors">{t.total_score}</div>
+                    <div className="text-6xl font-black text-gray-100 group-hover:text-[#FCE8E8] transition-colors">{t.total_score}</div>
                   </div>
                 ))}
               </div>
@@ -397,7 +557,7 @@ export default function ProfileFullDemo() {
 
           {/* TAB 3: 互动消息 */}
           {activeTab === 'social' && (
-            <div className="bg-white rounded-[3rem] p-10 shadow-sm border border-pink-100 animate-in fade-in duration-500 min-h-[600px]">
+            <div className="bg-white rounded-[3rem] p-10 shadow-sm border border-[#E58889]/20 animate-in fade-in duration-500 min-h-[600px]">
               <h3 className="text-2xl font-black text-gray-800 mb-8 flex items-center gap-3">
                 通知中心
                 <span className="text-xs font-normal text-gray-400 bg-gray-100 px-3 py-1 rounded-full">最新动态</span>
@@ -420,19 +580,19 @@ export default function ProfileFullDemo() {
                     config = { ...config, title: `${n.actor?.username || '神秘人'} 回复了你的提问`, icon: "💬", color: "blue" };
                   } else if (n.type === 'system_approve') {
                     config = { 
-                      title: "✨ 审核通过通知", icon: "✅", color: "green", 
+                      title: " 审核通过通知", icon: "✅", color: "green", 
                       desc: "你的内容已通过人工审核，现在全社区可见。" 
                     };
                   } else if (n.type === 'system_reject') {
                     config = { 
-                      title: "⚠️ 违规处理提醒", icon: "🚫", color: "red", 
+                      title: " 违规处理提醒", icon: "🚫", color: "red", 
                       desc: "很抱歉，你的内容因包含敏感信息已被系统移除。请共同维护温暖的社区环境。" 
                     };
                   }
 
                   // 根据颜色生成对应的 Tailwind 类名
                   const colorClasses = {
-                    pink: "bg-pink-50 text-pink-500 border-pink-100",
+                    pink: "bg-[#FDF0F0] text-[#E58889] border-[#E58889]/20",
                     blue: "bg-blue-50 text-blue-500 border-blue-100",
                     green: "bg-green-50 text-green-600 border-green-100",
                     red: "bg-red-50 text-red-600 border-red-100"
@@ -532,7 +692,7 @@ export default function ProfileFullDemo() {
               </div>
 
               {/* 模块 B：阳光储蓄罐 */}
-              <div className="bg-gradient-to-br from-orange-50 to-pink-50 rounded-[3rem] p-10 shadow-sm border border-orange-100/50">
+              <div className="bg-gradient-to-br from-orange-50 to-[#FDF0F0] rounded-[3rem] p-10 shadow-sm border border-orange-100/50">
                 <div className="flex justify-between items-end mb-8">
                   <div>
                     <h3 className="text-2xl font-black text-orange-500 flex items-center gap-2">
@@ -656,17 +816,17 @@ export default function ProfileFullDemo() {
                 <h2 className="text-xl font-black text-wysa-green">{selectedTestResult.tests?.title}</h2>
                 <p className="text-xs text-gray-400">回溯日期：{new Date(selectedTestResult.created_at).toLocaleString()}</p>
               </div>
-              <button onClick={() => setSelectedTestResult(null)} className="text-2xl text-gray-300 hover:text-pink-500">✕</button>
+              <button onClick={() => setSelectedTestResult(null)} className="text-2xl text-gray-300 hover:text-[#E58889]">✕</button>
             </div>
 
             <div className="p-10 overflow-y-auto flex-1 space-y-8">
-              <div className="text-center bg-pink-50 rounded-[2rem] py-8 border border-pink-100">
-                <div className="text-7xl font-black text-pink-500">{selectedTestResult.total_score}</div>
-                <div className="font-bold text-pink-400 mt-2">结论：{selectedTestResult.result_level}</div>
+              <div className="text-center bg-[#FDF0F0] rounded-[2rem] py-8 border border-[#E58889]/20">
+                <div className="text-7xl font-black text-[#E58889]">{selectedTestResult.total_score}</div>
+                <div className="font-bold text-[#D0737A] mt-2">结论：{selectedTestResult.result_level}</div>
               </div>
 
               <div className="bg-gray-900 text-white p-8 rounded-[2.5rem]">
-                <h4 className="text-pink-400 text-[10px] font-black mb-4 uppercase tracking-widest">💡 历史诊断解析</h4>
+                <h4 className="text-[#D0737A] text-[10px] font-black mb-4 uppercase tracking-widest">💡 历史诊断解析</h4>
                 <p className="text-sm leading-relaxed opacity-80 italic">{selectedTestResult.analysis_text || "暂无详细建议内容。"}</p>
               </div>
 

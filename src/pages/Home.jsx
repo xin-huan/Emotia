@@ -667,7 +667,7 @@ const FeedbackSection = () => {
         {/* 文章卡片 */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {newsData.map((news) => (
-            <div onClick={() => setSelectedArticle(news)} key={news.id} className="bg-wysa-pink backdrop-blur-md rounded-[24px] border border-white/50 shadow-md overflow-hidden group cursor-pointer hover:-translate-y-1.5 transition-all duration-300 hover:shadow-xl flex flex-col">
+            <div onClick={() => setSelectedArticle(news)} key={news.id} className="bg-white backdrop-blur-md rounded-[24px] border border-white/50 shadow-md overflow-hidden group cursor-pointer hover:-translate-y-1.5 transition-all duration-300 hover:shadow-xl flex flex-col">
               <div className="w-full h-[180px] overflow-hidden relative bg-gray-100/50">
                 <img
                   src={news.img}

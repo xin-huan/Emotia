@@ -1,13 +1,17 @@
 @import "tailwindcss";
 
 @theme {
-  /* 定义你的专属 Wysa 颜色 */
-  --color-wysa-green: #567357;
-  --color-wysa-pink:  #F9F0ED;
-  --color-wysa-coral: #E58889;
-
-  /* 兼容你代码中可能存在的其他变量 */
-  --color-brand-blue: #E58889;
+  /* Wysa 色彩体系 */
+  --color-wysa-green:       #567357;
+  --color-wysa-green-light: #7A9B7B;
+  --color-wysa-green-pale:  #E8F0E8;
+  --color-wysa-pink:        #F9F0ED;
+  --color-wysa-cream:       #FFF8F3;
+  --color-wysa-coral:       #F0A9AA;
+  --color-wysa-coral-light: #FAD8D9;
+  --color-wysa-coral-deep:  #D07A7B;
+  --color-wysa-dark:        #3A4A3B;
+  --color-brand-blue:       #E58889;
 }
 
 /* 隐藏滚动条 */

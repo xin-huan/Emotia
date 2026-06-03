@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import CardNav from '../components/CardNav';
+import DecryptedText from '../components/DecryptedText';
 
 const games = [
-  { id: 'hextris', name: 'Hextris', desc: '六边形俄罗斯方块，旋转消除不停歇', icon: '🔷', color: '#3498db' },
-  { id: '2048', name: '2048', desc: '滑动合并数字，挑战极限高分', icon: '🧩', color: '#edc22e' },
-  { id: 'sandspiel', name: '沙粒模拟', desc: '自由创造粒子世界，释放想象力', icon: '🏝️', color: '#e6c873' },
-  { id: 'fluid', name: '流光流体', desc: '绚丽的流体光影互动体验', icon: '🌊', color: '#4a9eda' },
+  { id: 'hextris', name: 'Hextris', desc: '六边形俄罗斯方块，旋转消除不停歇', icon: '🔷', color: '#567357', image: '/屏幕截图 2026-06-03 144628.png' },
+  { id: '2048', name: '2048', desc: '滑动合并数字，挑战极限高分', icon: '🧩', color: '#E58889', image: '/屏幕截图 2026-06-03 145116.png' },
+  { id: 'sandspiel', name: '沙粒模拟', desc: '自由创造粒子世界，释放想象力', icon: '🏝️', color: '#7A9B7B', image: '/3.png' },
+  { id: 'fluid', name: '流光流体', desc: '绚丽的流体光影互动体验', icon: '🌊', color: '#D07A7B', image: '/games/fluid/promo_back.png' },
 ];
 
 const CheckInTest = () => {
@@ -16,6 +18,13 @@ const CheckInTest = () => {
   const [selectedScore, setSelectedScore] = useState(null);
 
   const [selectedGame, setSelectedGame] = useState(null);
+  const [hoveredGame, setHoveredGame] = useState(games[0]);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message, type = 'info') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 2500);
+  };
 
   const storedUserId = localStorage.getItem('user_id');
   const userId = (storedUserId === "undefined" || storedUserId === "null") ? null : storedUserId;
@@ -56,11 +65,11 @@ const CheckInTest = () => {
 
   const handleConfirmSubmit = async () => {
     if (hasCheckedIn) {
-      alert("今天已经打过卡啦！明天再来吧~");
+      showToast("今天已经打过卡啦！明天再来吧~", "warning");
       return;
     }
     if (!selectedScore) {
-      alert("请先选择一个心情表情哦！");
+      showToast("请先选择一个心情表情哦！", "warning");
       return;
     }
 
@@ -77,7 +86,7 @@ const CheckInTest = () => {
       localStorage.setItem(`score_${userId}_${todayStr}`, selectedScore);
 
       if (data.action === "show_agent") {
-        alert("检测到心情低落，已为您解锁【Agent 咨询室】日常任务！");
+        showToast("检测到心情低落，已为您解锁【Agent 咨询室】日常任务！", "info");
       }
 
       fetchTasks();
@@ -90,14 +99,14 @@ const CheckInTest = () => {
   // 3. 常驻功能：存入阳光小事
   // ==========================
   const handleSunshineSubmit = async () => {
-    if (!sunshineText) return alert("写点什么再存进去吧！");
+    if (!sunshineText) return showToast("写点什么再存进去吧！", "warning");
     try {
       await fetch("http://localhost:8000/api/checkin/sunshine", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, content: sunshineText })
       });
-      alert("✨ 叮！成功存入一件阳光小事！");
+      showToast("✨ 叮！成功存入一件阳光小事！", "success");
       setSunshineText("");
       fetchTasks();
     } catch (error) {
@@ -125,12 +134,33 @@ const CheckInTest = () => {
   if (!userId) return <div style={{padding: '50px', textAlign:'center', color: '#fff'}}>请先登录！</div>;
 
   return (
-    <div style={{ backgroundColor: '#F9F0ED', minHeight: '100vh', padding: '100px 20px 40px', color: '#333', fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ backgroundColor: '#F9F0ED', minHeight: '100vh', padding: '100px 20px 40px', color: '#3A4A3B', fontFamily: 'system-ui, sans-serif' }}>
+
+      {/* Toast 通知 */}
+      {toast && (
+        <div style={{
+          position: 'fixed', top: '24px', left: '50%', transform: 'translateX(-50%)',
+          zIndex: 9999, animation: 'toastIn 0.3s ease',
+          padding: '14px 28px', borderRadius: '12px', fontSize: '15px', fontWeight: 600,
+          letterSpacing: '0.02em', boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+          backdropFilter: 'blur(8px)',
+          ...(toast.type === 'success' ? { background: '#F5FAF5', color: '#567357', border: '1px solid #C8E0C8' } :
+              toast.type === 'warning' ? { background: '#FFF8F0', color: '#C07A3B', border: '1px solid #F0D8B8' } :
+              { background: '#FFF5F5', color: '#D07A7B', border: '1px solid #F5D0D0' }),
+        }}>
+          {toast.message}
+        </div>
+      )}
 
       <style>{`
+        @keyframes toastIn {
+          from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
+          to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        .emoji-btn { font-size: 45px; cursor: pointer; transition: all 0.2s; filter: grayscale(30%); opacity: 0.7; }
         .emoji-btn { font-size: 45px; cursor: pointer; transition: all 0.2s; filter: grayscale(30%); opacity: 0.7; }
         .emoji-btn:hover { transform: scale(1.2); filter: grayscale(0%); opacity: 1; }
-        .emoji-btn.active { transform: scale(1.2); filter: grayscale(0%); opacity: 1; text-shadow: 0 0 15px rgba(0,0,0,0.15); }
+        .emoji-btn.active { transform: scale(1.2); filter: grayscale(0%); opacity: 1; text-shadow: 0 0 15px rgba(86,115,87,0.25); }
         .emoji-btn.disabled { cursor: not-allowed; }
         .emoji-btn.disabled:hover { transform: scale(1); }
 
@@ -138,26 +168,46 @@ const CheckInTest = () => {
           margin-top: 15px; padding: 10px 30px; font-size: 16px; font-weight: bold; color: #fff;
           border: none; border-radius: 8px; transition: all 0.3s;
         }
-        .confirm-btn.ready { background-color: #E58889; cursor: pointer; box-shadow: 0 4px 10px rgba(229,136,137,0.4); }
-        .confirm-btn.ready:hover { background-color: #d07a7b; transform: translateY(-2px); }
-        .confirm-btn.disabled { background-color: #ccc; cursor: not-allowed; color: #999; }
+        .confirm-btn.ready { background-color: #F0A9AA; cursor: pointer; box-shadow: 0 4px 10px rgba(240,169,170,0.4); }
+        .confirm-btn.ready:hover { background-color: #D07A7B; transform: translateY(-2px); }
+        .confirm-btn.disabled { background-color: #E8DDD6; cursor: not-allowed; color: #B0A89E; }
 
-        .quest-card { background: #fff; border: 1px solid #e8e3db; border-radius: 16px; padding: 24px; margin-bottom: 25px; box-shadow: 0 4px 16px rgba(0,0,0,0.04); }
-        .quest-title { color: #567357; margin-top: 0; display: flex; alignItems: center; border-bottom: 1px solid #f0ebe3; padding-bottom: 10px; font-weight: 700; }
+        .quest-card { background: #fff; border: 1px solid #E8DDD6; border-radius: 16px; padding: 24px; margin-bottom: 25px; box-shadow: 0 4px 16px rgba(86,115,87,0.06); }
+        .quest-title { color: #567357; margin-top: 0; display: flex; alignItems: center; border-bottom: 1px solid #F0EBE3; padding-bottom: 10px; font-weight: 700; }
 
-        .task-item { background: #faf8f5; margin: 10px 0; padding: 15px; border-radius: 8px; display: flex; align-items: center; border-left: 4px solid #E58889; transition: all 0.3s; }
-        .task-item.completed { border-left-color: #567357 !important; opacity: 0.75; }
+        .task-item { background: #FFF8F3; margin: 10px 0; padding: 15px; border-radius: 8px; display: flex; align-items: center; border-left: 4px solid #F5C6C7; transition: all 0.3s; }
+        .task-item.completed { border-left-color: #F5C6C7 !important; opacity: 0.75; background: #FFF5F5; }
 
-        input[type="checkbox"] { width: 20px; height: 20px; margin-right: 15px; accent-color: #567357; cursor: pointer; }
+        input[type="checkbox"] { width: 20px; height: 20px; margin-right: 15px; accent-color: #F5C6C7; cursor: pointer; }
+
+        .nav-card { align-self: stretch !important; }
+        .nav-card-links { flex: 1 !important; margin-top: 0 !important; }
+        .nav-card .task-item { flex: 1; min-height: 56px; }
       `}</style>
 
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
 
+        {/* 页面标语 */}
+        <div style={{ marginTop: '48px', marginBottom: '72px', textAlign: 'center' }}>
+          <DecryptedText
+            text="How are you feeling today, Friend?"
+            animateOn="view"
+            speed={60}
+            maxIterations={8}
+            sequential={true}
+            revealDirection="start"
+            className=""
+            encryptedClassName=""
+            parentClassName="text-3xl md:text-4xl font-bold tracking-tight"
+            style={{ color: '#567357', fontFamily: "'Playfair Display', 'Georgia', serif" }}
+          />
+        </div>
+
         {/* ================= 模块 1：情绪打卡面板 ================= */}
         <div data-aos="zoom-in-up" data-aos-easing="ease-out-back" data-aos-duration="700" className="quest-card" style={{ textAlign: 'center' }}>
           <h3 className="quest-title">今日能量检测</h3>
-          <p style={{ color: '#666', fontSize: '14px' }}>
-            {hasCheckedIn ? "✅ 今日已完成检测，干得漂亮！" : "指挥官，请评估您今天的精神状态（每日限1次）："}
+          <p style={{ color: '#7A8A7B', fontSize: '20px' }}>
+            {hasCheckedIn ? "✅ 今日已完成检测" : "指挥官，请评估您今天的精神状态（每日限1次）："}
           </p>
 
           <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', margin: '20px 0' }}>
@@ -176,7 +226,7 @@ const CheckInTest = () => {
                 >
                   {item.face}
                 </span>
-                <span style={{ fontSize: '12px', marginTop: '5px', color: selectedScore == item.score ? '#333' : '#999' }}>
+                <span style={{ fontSize: '12px', marginTop: '5px', color: selectedScore == item.score ? '#3A4A3B' : '#B0A89E' }}>
                   {item.label}
                 </span>
               </div>
@@ -194,122 +244,213 @@ const CheckInTest = () => {
           )}
         </div>
 
-        {/* ================= 模块 2+3：并排：日常任务 + 阳光储蓄罐 ================= */}
-        <div data-aos="zoom-in-up" data-aos-easing="ease-out-back" data-aos-duration="700" data-aos-delay="100" style={{ display: 'flex', gap: '20px' }}>
+        {/* ================= 模块 2：日常任务（CardNav） ================= */}
+        <div data-aos="zoom-in-up" data-aos-easing="ease-out-back" data-aos-duration="700" data-aos-delay="100" style={{ marginBottom: '25px' }}>
+          <CardNav
+            title="📜 每日日常任务"
+            baseColor="#ffffff"
+            menuColor="#567357"
+            startExpanded={true}
+            items={(() => {
+              const cats = [];
 
-          {/* 左：游戏化任务看板 */}
-          <div className="quest-card" style={{ flex: 1 }}>
-            <h3 className="quest-title" style={{ color: '#E58889', borderColor: '#E58889' }}>📜 每日日常任务</h3>
+              // 主线任务
+              cats.push({
+                label: '主线任务',
+                bgColor: '#ffffff',
+                textColor: '#567357',
+                links: [{ _type: 'main', label: 'Emoji 心情打卡', sub: '奖励：解锁后续任务', checked: hasCheckedIn }],
+              });
 
-            <div className={`task-item ${hasCheckedIn ? 'completed' : ''}`}>
-              <input type="checkbox" checked={hasCheckedIn} readOnly />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 'bold' }}>完成今日 Emoji 心情打卡</div>
-                <div style={{ fontSize: '12px', color: '#999' }}>主线任务 / 奖励：解锁后续任务</div>
-              </div>
-            </div>
+              // 行为激活
+              const sysTasks = tasks.filter(t => t.source === 'system_random');
+              if (sysTasks.length > 0) {
+                cats.push({
+                  label: '行为激活',
+                  bgColor: '#ffffff',
+                  textColor: '#567357',
+                  links: sysTasks.map(t => ({ _type: 'system', _id: t.id, label: t.task_content, sub: '奖励：+5 积极能量', checked: t.is_completed })),
+                });
+              }
 
-            {tasks.filter(t => t.source === 'system_random').map(task => (
-              <div className={`task-item ${task.is_completed ? 'completed' : ''}`} key={task.id} style={{ borderLeftColor: '#3498db' }}>
-                <input type="checkbox" checked={task.is_completed} onChange={() => handleToggleTask(task.id, task.is_completed)} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 'bold' }}>{task.task_content}</div>
-                  <div style={{ fontSize: '12px', color: '#999' }}>
-                    行为激活任务 / 奖励：+5 积极能量
-                  </div>
-                </div>
-              </div>
-            ))}
+              // Agent 专属
+              const agentTasks = tasks.filter(t => t.source === 'agent_custom');
+              if (agentTasks.length > 0) {
+                cats.push({
+                  label: 'Agent 专属',
+                  bgColor: '#ffffff',
+                  textColor: '#567357',
+                  links: agentTasks.map(t => ({ _type: 'agent', _id: t.id, label: t.task_content, sub: '奖励：+10 治愈值', checked: t.is_completed })),
+                });
+              }
 
-            {tasks.filter(t => t.source === 'agent_custom').map(task => (
-              <div className={`task-item ${task.is_completed ? 'completed' : ''}`} key={task.id} style={{ borderLeftColor: '#9b59b6' }}>
-                <input type="checkbox" checked={task.is_completed} onChange={() => handleToggleTask(task.id, task.is_completed)} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 'bold' }}>{task.task_content}</div>
-                  <div style={{ fontSize: '12px', color: '#999' }}>
-                    Agent 专属定制 / 奖励：+10 治愈值
-                  </div>
-                </div>
-              </div>
-            ))}
+              // 分支任务
+              if (guideTasks.length > 0) {
+                cats.push({
+                  label: '分支任务',
+                  bgColor: '#ffffff',
+                  textColor: '#567357',
+                  links: guideTasks.map((t, i) => ({ _type: 'guide', _idx: i, label: t.content, sub: t.content.includes('Agent') && !t.completed ? 'agent' : '请在下方或指定页面完成', checked: t.completed })),
+                });
+              }
 
-            {guideTasks.map((task, idx) => (
-              <div className={`task-item ${task.completed ? 'completed' : ''}`} key={idx} style={{ borderLeftColor: '#E58889' }}>
-                <input type="checkbox" checked={task.completed} readOnly />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 'bold', color: '#E58889' }}>{task.content}</div>
-                  <div style={{ fontSize: '12px', color: '#999' }}>
-                    分支任务 / {task.content.includes("Agent") && !task.completed ?
-                    <button onClick={()=>window.location.href='/agent'} style={{background:'#E58889', color:'#fff', border:'none', borderRadius:'4px', cursor:'pointer', padding:'2px 8px'}}>立即前往</button>
-                    : '请在下方或指定页面完成'}
-                  </div>
-                </div>
-              </div>
-            ))}
-
-          </div>
-
-          {/* 右：常驻阳光储蓄罐 */}
-          <div className="quest-card" style={{ flex: 1, borderColor: '#567357' }}>
-            <h3 className="quest-title" style={{ color: '#567357', borderColor: '#567357' }}>☀️ 阳光储蓄罐</h3>
-            <p style={{ color: '#666', fontSize: '14px' }}>抓住转瞬即逝的快乐。哪怕是一杯好喝的奶茶，也可以存进来！</p>
-
-            <div style={{ display: 'flex', marginTop: '15px' }}>
-              <input
-                value={sunshineText}
-                onChange={(e) => setSunshineText(e.target.value)}
-                placeholder="记录一件好事..."
-                style={{ flex: 1, padding: '12px', borderRadius: '8px 0 0 8px', border: 'none', outline: 'none', background: '#fff', color: '#333' }}
-              />
-              <button
-                onClick={handleSunshineSubmit}
-                style={{ padding: '0 25px', background: '#567357', color: '#fff', border: 'none', borderRadius: '0 8px 8px 0', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px' }}
+              return cats;
+            })()}
+            renderLink={(lnk, i) => (
+              <div
+                key={i}
+                className={`task-item ${lnk.checked ? 'completed' : ''}`}
+                style={{ borderLeftColor: '#FFF0EE', width: '100%', boxSizing: 'border-box' }}
               >
-                存入
-              </button>
-            </div>
-          </div>
+                <input
+                  type="checkbox"
+                  checked={lnk.checked}
+                  readOnly={lnk._type === 'main' || lnk._type === 'guide'}
+                  onChange={() => {
+                    if (lnk._type === 'system' || lnk._type === 'agent') {
+                      handleToggleTask(lnk._id, lnk.checked);
+                    }
+                  }}
+                  style={{ width: '18px', height: '18px', marginRight: '12px', accentColor: '#F5C6C7', flexShrink: 0 }}
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: '14px' }}>{lnk.label}</div>
+                  <div style={{ fontSize: '11px', color: '#B0A89E', marginTop: '2px' }}>
+                    {lnk.sub === 'agent' ? (
+                      <button onClick={() => window.location.href = '/agent'} style={{ background: '#00000', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', padding: '1px 6px', fontSize: '10px' }}>立即前往</button>
+                    ) : lnk.sub}
+                  </div>
+                </div>
+              </div>
+            )}
+          />
+        </div>
 
+        {/* ================= 模块 3：阳光储蓄罐 ================= */}
+        <div data-aos="zoom-in-up" data-aos-easing="ease-out-back" data-aos-duration="700" data-aos-delay="150" style={{ background: '#FFFFFF', borderRadius: '16px', padding: '24px', marginBottom: '25px' }}>
+          <h3 className="quest-title" style={{ color: '#567357', borderBottomColor: '#567357' }}>☀️ 阳光储蓄罐</h3>
+          <p style={{ color: '#7A8A7B', fontSize: '14px' }}>抓住转瞬即逝的快乐。哪怕是一杯好喝的奶茶，也可以存进来！</p>
+
+          <div style={{ display: 'flex', marginTop: '15px' }}>
+            <input
+              value={sunshineText}
+              onChange={(e) => setSunshineText(e.target.value)}
+              placeholder="记录一件好事..."
+              style={{ flex: 1, padding: '12px', borderRadius: '8px 0 0 8px', border: 'none', outline: 'none', background: '#FFF8F3', color: '#3A4A3B' }}
+            />
+            <button
+              onClick={handleSunshineSubmit}
+              style={{ padding: '0 25px', background: '#567357', color: '#fff', border: 'none', borderRadius: '0 8px 8px 0', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px' }}
+            >
+              存入
+            </button>
+          </div>
         </div>
 
         {/* ================= 模块 4：解压小游戏 ================= */}
         <div data-aos="zoom-in-up" data-aos-easing="ease-out-back" data-aos-duration="700" data-aos-delay="200" className="quest-card" style={{ marginTop: '25px' }}>
-          <h3 className="quest-title" style={{ color: '#9b59b6', borderColor: '#9b59b6' }}>🎮 解压小游戏</h3>
-          <p style={{ color: '#666', fontSize: '14px', marginBottom: '20px' }}>
+          <h3 className="quest-title" style={{ color: '#7A9B7B', borderBottomColor: '#7A9B7B' }}>🎮 解压小游戏</h3>
+          <p style={{ color: '#7A8A7B', fontSize: '14px', marginBottom: '20px' }}>
             感到压力大？选一个喜欢的游戏，在 Emotia 中放松一下吧。
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
-            {games.map(game => (
-              <div
-                key={game.id}
-                onClick={() => setSelectedGame(game)}
+          <div style={{ display: 'flex', gap: '32px', alignItems: 'stretch' }}>
+            {/* 左侧：竖排长方形选项 */}
+            <div style={{ flex: '0 0 260px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {games.map(game => {
+                const isActive = hoveredGame?.id === game.id;
+                return (
+                  <div
+                    key={game.id}
+                    onMouseEnter={() => setHoveredGame(game)}
+                    onClick={() => setSelectedGame(game)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '14px',
+                      padding: '16px 20px',
+                      background: isActive ? game.color : '#fff',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      border: isActive ? `2px solid ${game.color}` : '2px solid #E8DDD6',
+                      transition: 'all 0.2s ease',
+                      boxShadow: isActive
+                        ? `0 4px 16px ${game.color}33`
+                        : '0 2px 6px rgba(86,115,87,0.05)',
+                      color: isActive ? '#fff' : '#3A4A3B',
+                    }}
+                  >
+                    <span style={{ fontSize: '28px', flexShrink: 0 }}>{game.icon}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '3px' }}>{game.name}</div>
+                      <div style={{ fontSize: '11px', opacity: 0.75, lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {game.desc}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* 右侧：正方形游戏封面图 */}
+            <div
+              style={{
+                flex: 1,
+                aspectRatio: '1 / 1',
+                borderRadius: '20px',
+                cursor: 'pointer',
+                boxShadow: `0 8px 32px ${hoveredGame.color}33`,
+                position: 'relative',
+                overflow: 'hidden',
+              }}
+              onClick={() => setSelectedGame(hoveredGame)}
+            >
+              <img
+                src={hoveredGame.image}
+                alt={hoveredGame.name}
                 style={{
-                  background: '#fff',
+                  position: 'absolute',
+                  inset: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                }}
+              />
+              <div style={{
+                position: 'absolute',
+                inset: 0,
+                background: `linear-gradient(to top, ${hoveredGame.color}cc 0%, transparent 50%)`,
+              }} />
+              <div style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                padding: '20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px',
+              }}>
+                <div style={{ color: '#fff', fontWeight: 800, fontSize: '20px', textShadow: '0 2px 6px rgba(0,0,0,0.3)' }}>
+                  {hoveredGame.name}
+                </div>
+                <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: '12px', lineHeight: 1.4, textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
+                  {hoveredGame.desc}
+                </div>
+                <div style={{
+                  marginTop: '4px',
+                  background: 'rgba(255,255,255,0.95)',
+                  color: hoveredGame.color,
                   borderRadius: '14px',
-                  padding: '20px 16px',
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  border: '2px solid transparent',
-                  transition: 'all 0.25s ease',
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = game.color;
-                  e.currentTarget.style.transform = 'translateY(-4px)';
-                  e.currentTarget.style.boxShadow = `0 8px 24px rgba(0,0,0,0.1)`;
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = 'transparent';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.04)';
-                }}
-              >
-                <div style={{ fontSize: '42px', marginBottom: '10px' }}>{game.icon}</div>
-                <div style={{ fontWeight: 700, fontSize: '15px', color: '#333', marginBottom: '6px' }}>{game.name}</div>
-                <div style={{ fontSize: '12px', color: '#999', lineHeight: 1.4 }}>{game.desc}</div>
+                  padding: '4px 16px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  alignSelf: 'flex-start',
+                }}>
+                  点击开始游戏
+                </div>
               </div>
-            ))}
+            </div>
           </div>
         </div>
 
@@ -336,19 +477,19 @@ const CheckInTest = () => {
           >
             <div style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '12px 20px', background: '#faf8f5', borderBottom: '1px solid #eee',
+              padding: '12px 20px', background: '#FFF8F3', borderBottom: '1px solid #E8DDD6',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span style={{ fontSize: '24px' }}>{selectedGame.icon}</span>
-                <span style={{ fontWeight: 700, fontSize: '16px', color: '#333' }}>{selectedGame.name}</span>
+                <span style={{ fontWeight: 700, fontSize: '16px', color: '#3A4A3B' }}>{selectedGame.name}</span>
               </div>
               <button
                 onClick={() => setSelectedGame(null)}
                 style={{
                   background: 'none', border: 'none', fontSize: '22px', cursor: 'pointer',
-                  color: '#999', padding: '4px 8px', borderRadius: '6px',
+                  color: '#B0A89E', padding: '4px 8px', borderRadius: '6px',
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = '#f0f0f0'}
+                onMouseEnter={e => e.currentTarget.style.background = '#F5D5D6'}
                 onMouseLeave={e => e.currentTarget.style.background = 'none'}
               >
                 ✕

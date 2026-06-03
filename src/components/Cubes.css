@@ -1,0 +1,28 @@
+.cubes-scene {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  perspective: 800px;
+}
+
+.cube {
+  position: relative;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.cube-face {
+  position: absolute;
+  inset: 0;
+  border: var(--cube-face-border, 1px solid #fff);
+  background: var(--cube-face-bg, #120F17);
+  box-shadow: var(--cube-face-shadow, none);
+  backface-visibility: visible;
+}
+
+.cube-face--front  { transform: translateZ(0); }
+.cube-face--back   { transform: rotateY(180deg) translateZ(0); }
+.cube-face--right  { transform: rotateY(90deg) translateZ(0); }
+.cube-face--left   { transform: rotateY(-90deg) translateZ(0); }
+.cube-face--top    { transform: rotateX(90deg) translateZ(0); }
+.cube-face--bottom { transform: rotateX(-90deg) translateZ(0); }
