@@ -859,6 +859,11 @@ export default function AgentTest() {
         body: JSON.stringify({ session_id: sessionId, user_id: userId, message: newUserMsg.content }),
       });
 
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        throw new Error(`后端返回错误 (${response.status}): ${errorText.slice(0, 200)}`);
+      }
+
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
       let buffer = '';
@@ -883,6 +888,10 @@ export default function AgentTest() {
                 setIsAgentThinking(false);
                 accumulatedReply += data.content;
                 setCurrentAgentReply((prev) => prev + data.content);
+              } else if (data.type === 'error') {
+                setIsAgentThinking(false);
+                setStatusText(data.content || 'AI引擎出错');
+                setChatHistory((prev) => [...prev, { role: 'agent', content: '[抱歉，AI引擎暂时无法响应，请稍后重试]' }]);
               } else if (data.type === 'done') {
                 setStatusText('回复完毕');
                 if (/打卡|签到|check-?in/i.test(accumulatedReply)) {
@@ -910,7 +919,12 @@ export default function AgentTest() {
         setChatHistory((prev) => [...prev, { role: 'agent', content: accumulatedReply }]);
       }
       setCurrentAgentReply('');
-    } catch (error) { setIsAgentThinking(false); setStatusText('连接失败，请检查后端是否在 8000 端口运行'); console.error(error); }
+    } catch (error) {
+      setIsAgentThinking(false);
+      setStatusText(error.message?.includes('后端返回') ? error.message : '连接失败，请检查后端是否在 8000 端口运行');
+      setChatHistory((prev) => [...prev, { role: 'agent', content: '[连接失败，请确认后端服务已启动]' }]);
+      console.error('Agent请求错误:', error);
+    }
   };
 
   const handleNewSession = () => {

@@ -229,7 +229,8 @@ llm = ChatOpenAI(
     api_key=os.environ.get("DEEPSEEK_API_KEY"),
     base_url="https://api.deepseek.com",
     model="deepseek-chat",
-    temperature=0.2
+    temperature=0.2,
+    request_timeout=120
 )
 
 

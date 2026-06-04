@@ -167,17 +167,18 @@ async def chat_endpoint(req: ChatRequest):
     # 先在 cbt_sessions 表里占个位
     preview_text = (req.message[:15] + '...') if len(req.message) > 15 else req.message
     try:
-        # 🚀 [核心修复] 先看这人是不是被封了
-        user_status = supabase.table("profiles").select("is_banned").eq("id", post.user_id).single().execute()
+        user_status = supabase.table("profiles").select("is_banned").eq("id", req.user_id).single().execute()
         if user_status.data and user_status.data.get("is_banned"):
             raise HTTPException(status_code=403, detail="账号异常，操作被拒绝")
         supabase.table("cbt_sessions").upsert({
             "id": req.session_id,
             "user_id": req.user_id,
-            "raw_event": f"🗨️ {preview_text}"
+            "raw_event": f" {preview_text}"
         }).execute()
+    except HTTPException:
+        raise
     except Exception as e:
-        pass
+        print(f"[chat] session预写入失败: {e}")
 
     # 1. 记录用户消息
     user_msg_data = {
@@ -188,32 +189,48 @@ async def chat_endpoint(req: ChatRequest):
     }
     supabase.table("chat_messages").insert(user_msg_data).execute()
 
-    # 2. 调用 Agent 获取结果
-    agent_res = process_cbt_chat(req.session_id, req.user_id, req.message)
-    
-    print(f"📦 [API准备发货] agent_res里的数据: {agent_res.get('full_emotions')}")
-
-    # 3. 记录 Agent 消息
-    agent_msg_data = {
-        "session_id": req.session_id,
-        "sender": "agent",
-        "content": agent_res["reply"],
-        "cbt_stage": agent_res["cbt_stage"]
-    }
-    supabase.table("chat_messages").insert(agent_msg_data).execute()
-
-    # 4. 构造 SSE 生成器
+    # 2. 构造 SSE 生成器（把同步阻塞的 Agent 调用放进 asyncio.to_thread）
     async def sse_generator():
-        print(f"📡 发送前端数据: {agent_res.get('full_emotions')}")
+        # 立即发送状态，告诉前端连接已建立
+        yield f"data: {json.dumps({'type': 'status', 'content': '正在分析你的情绪...'})}\n\n"
+
+        # 在后台线程中执行 LangGraph 工作流，避免阻塞事件循环
+        try:
+            agent_res = await asyncio.to_thread(
+                process_cbt_chat, req.session_id, req.user_id, req.message
+            )
+        except Exception as e:
+            print(f"[Agent] 工作流执行失败: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'content': f'AI引擎暂时不可用：{str(e)[:100]}'})}\n\n"
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+            return
+
+        print(f"[API] agent_res 数据: {agent_res.get('full_emotions')}")
+
+        # 3. 异步落库 Agent 消息（不阻塞 SSE 流）
+        try:
+            agent_msg_data = {
+                "session_id": req.session_id,
+                "sender": "agent",
+                "content": agent_res["reply"],
+                "cbt_stage": agent_res.get("cbt_stage", "stage_1")
+            }
+            await asyncio.to_thread(
+                supabase.table("chat_messages").insert(agent_msg_data).execute
+            )
+        except Exception as e:
+            print(f"[chat] agent消息落库失败: {e}")
+
+        # 4. 推送结构化数据
         whitebox_data = {
             'type': 'data_update',
             'emotion_tags': agent_res.get('full_emotions', {}),
             'evidences': agent_res.get('evidences', [])
         }
         yield f"data: {json.dumps(whitebox_data, ensure_ascii=False)}\n\n"
-        print(f"📡 [SSE发送] 最终发往前端的数据: {whitebox_data['emotion_tags']}")
 
-        full_reply = agent_res['reply']
+        # 5. 打字机效果推送回复
+        full_reply = agent_res.get('reply', '')
         chunk_size = 2
         for i in range(0, len(full_reply), chunk_size):
             chunk = full_reply[i:i + chunk_size]

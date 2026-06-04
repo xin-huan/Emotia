@@ -11,6 +11,7 @@ import Agent from './pages/AgentTest';
 import Test from './pages/Test';
 import CheckInTest from './pages/CheckInTest';
 import ProfileDev from './pages/ProfileDev'
+import AdminDashboard from './pages/AdminDashboard'
 import Intro from './pages/Intro'
 
 function ScrollToTop() {
@@ -82,7 +83,7 @@ function AppContent() {
         <Route path="/agent" element={<Agent />} />
         <Route path="/Test" element={<Test />} />
         <Route path="/checkin" element={<CheckInTest />} />
-        <Route path="/dev-me" element={<ProfileDev />} />
+        <Route path="/dev-me" element={<AdminDashboard />} />
         <Route path="/ProfileDev" element={<ProfileDev />} />
         <Route path="/profile" element={<ProfileDev />} />
       </Routes>
